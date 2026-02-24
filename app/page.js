@@ -65,34 +65,35 @@ export default function Dashboard() {
   }
 
   return (
-    // 1. 배경을 깊이감 있는 그라데이션으로 변경 (bg-gradient-to-br)
-    <div className="min-h-screen bg-gradient-to-br from-[#000000] via-[#0f1117] to-[#1a1c24] text-gray-100 p-4 pb-24 font-sans">
+  <div className="min-h-screen bg-gradient-to-br from-[#000000] via-[#0f1117] to-[#1a1c24] text-gray-100 p-4 pb-24 font-sans">
+    
+    {/* 헤더: 모든 요소를 중앙으로 정렬 (items-center) */}
+    <header className="sticky top-0 bg-transparent py-12 z-10 flex flex-col items-center text-center">
       
-      {/* 2. 헤더 부분의 이름을 새로운 이름으로 변경 */}
-      <header className="sticky top-0 bg-transparent py-4 z-10">
-        <h1 className="text-3xl font-extrabold mb-4 ml-2 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">
-          The Archive {/* <--- 여기서 이름을 추천받은 이름으로 바꾸세요! */}
-        </h1>
-        
-        {/* 카테고리 버튼들 배경도 살짝 더 투명하게 처리 */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+      {/* 1. 제목 크기 2배(text-6xl) 및 명암(drop-shadow, gradient) 효과 */}
+      <h1 className="text-6xl md:text-7xl font-black mb-10 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)]">
+        The Archive
+      </h1>
+      
+      {/* 2. 카테고리 중앙 정렬 (justify-center) */}
+      <div className="flex justify-center gap-3 overflow-x-auto no-scrollbar w-full px-4 pb-4">
+        <button 
+          onClick={() => setFilter('전체')} 
+          className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}
+        >
+          전체
+        </button>
+        {categories.map(cat => (
           <button 
-            onClick={() => setFilter('전체')} 
-            className={`px-5 py-2 rounded-full whitespace-nowrap transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_20px_rgba(255,255,255,0.3)]' : 'bg-white/5 text-gray-400 backdrop-blur-md hover:bg-white/10'}`}
+            key={cat.id} 
+            onClick={() => setFilter(cat.name)} 
+            className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}
           >
-            전체
+            {cat.icon} {cat.name}
           </button>
-          {categories.map(cat => (
-            <button 
-              key={cat.id} 
-              onClick={() => setFilter(cat.name)} 
-              className={`px-5 py-2 rounded-full whitespace-nowrap transition-all ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_20px_rgba(255,255,255,0.3)]' : 'bg-white/5 text-gray-400 backdrop-blur-md hover:bg-white/10'}`}
-            >
-              {cat.icon} {cat.name}
-            </button>
-          ))}
-        </div>
-      </header>
+        ))}
+      </div>
+    </header>
 
       <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
         {items.filter(item => filter === '전체' || item.category_id === categories.find(c => c.name === filter)?.id).map(item => (

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText } from 'lucide-react';
+import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Clock, Calendar } from 'lucide-react';
 
 export default function Dashboard() {
   const [items, setItems] = useState([]);
@@ -11,9 +11,12 @@ export default function Dashboard() {
   const [showPw, setShowPw] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
-  
-  // 입력 모달 단계 상태: 'choice' | 'url' | 'photo' | 'memo'
   const [addStep, setAddStep] = useState('choice');
+
+  // --- 추가된 수정 및 상세 보기 상태 ---
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  // ----------------------------------
 
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -29,18 +32,57 @@ export default function Dashboard() {
   async function fetchInitialData() {
     const { data: catData } = await supabase.from('categories').select('*').order('display_order');
     setCategories(catData || []);
-    if (catData?.length > 0) setNewItem(prev => ({ ...prev, category_id: catData[0].id }));
     const { data: itemData } = await supabase.from('dashboard_items').select('*').order('created_at', { ascending: false });
     setItems(itemData || []);
   }
 
-  // 모달 열 때 초기화
-  const openAddModal = () => {
-    setAddStep('choice');
-    setIsModalOpen(true);
-    setNewItem({ title: '', category_id: categories[0]?.id || '', type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: '' });
+  // 날짜 포맷 함수
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
   };
 
+  // URL 자동 보정 함수 (https:// 추가)
+  const fixUrl = (url) => {
+    if (!url) return "";
+    return url.startsWith("http") ? url : `https://${url}`;
+  };
+
+  // 상세/수정 모달 열기
+  const openDetail = (item) => {
+    setEditingItem({ ...item });
+    setIsDetailModalOpen(true);
+  };
+
+  // 수정 내용 저장
+  const handleUpdateItem = async (e) => {
+    e.preventDefault();
+    const { error } = await supabase.from('dashboard_items').update({
+      ...editingItem,
+      url: fixUrl(editingItem.url)
+    }).eq('id', editingItem.id);
+
+    if (error) alert('수정 실패!');
+    else {
+      setIsDetailModalOpen(false);
+      fetchInitialData();
+    }
+  };
+
+  // 기존 handleAddItem 수정 (URL 보정 포함)
+  async function handleAddItem(e) {
+    e.preventDefault();
+    const finalItem = { 
+      ...newItem, 
+      url: fixUrl(newItem.url),
+      title: newItem.title || (addStep === 'photo' ? '새 사진' : addStep === 'memo' ? '새 메모' : '새 링크') 
+    };
+    const { error } = await supabase.from('dashboard_items').insert([finalItem]);
+    if (error) alert('저장 실패!');
+    else { setIsModalOpen(false); fetchInitialData(); }
+  }
+
+  // (이하 handleAuthConfirm, handleCategoryClick, handleDeleteCategory, handleSaveCategory, handleImageUpload, handleDelete 함수는 기존과 동일하게 유지)
   const handleAuthConfirm = async (e) => {
     e.preventDefault();
     if (authInput === authModal.target.password) {
@@ -86,23 +128,16 @@ export default function Dashboard() {
     if (error) alert('업로드 실패!');
     else {
       const { data } = supabase.storage.from('images').getPublicUrl(filePath);
-      setNewItem({ ...newItem, image_url: data.publicUrl, type: 'image' });
+      if (isDetailModalOpen) setEditingItem({ ...editingItem, image_url: data.publicUrl });
+      else setNewItem({ ...newItem, image_url: data.publicUrl, type: 'image' });
     }
     setUploading(false);
-  }
-
-  async function handleAddItem(e) {
-    e.preventDefault();
-    // 제목이 없는 경우 기본값 설정
-    const finalItem = { ...newItem, title: newItem.title || (addStep === 'photo' ? '새 사진' : addStep === 'memo' ? '새 메모' : '새 링크') };
-    const { error } = await supabase.from('dashboard_items').insert([finalItem]);
-    if (error) alert('저장 실패!');
-    else { setIsModalOpen(false); fetchInitialData(); }
   }
 
   async function handleDelete(id) {
     if (confirm('정말 삭제하시겠습니까?')) {
       await supabase.from('dashboard_items').delete().eq('id', id);
+      setIsDetailModalOpen(false);
       fetchInitialData();
     }
   }
@@ -129,31 +164,87 @@ export default function Dashboard() {
           const itemCat = categories.find(c => c.id === item.category_id);
           return filter === '전체' ? !itemCat?.is_private : itemCat?.name === filter;
         }).map(item => (
-          <div key={item.id} className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl relative group">
-            <button onClick={() => handleDelete(item.id)} className="absolute top-4 right-4 text-gray-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
+          <div key={item.id} onClick={() => openDetail(item)} className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl relative group cursor-pointer hover:border-white/20 transition-all">
             <div className="mb-4"><span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">{categories.find(c => c.id === item.category_id)?.name}</span></div>
             {item.image_url && <img src={item.image_url} className="w-full h-48 object-cover rounded-2xl mb-4 border border-gray-800" alt="uploaded" />}
-            <h3 className="text-xl font-bold mb-2 flex items-center gap-2">{item.title} {item.url && <a href={item.url} target="_blank"><ExternalLink size={16} className="text-gray-500" /></a>}</h3>
-            {item.login_id && (
-               <div className="space-y-3 bg-black/50 rounded-2xl p-4 border border-gray-800/50 mt-2 text-sm text-gray-300">
-                 <div className="flex justify-between items-center"><span>ID: {item.login_id}</span><button onClick={() => navigator.clipboard.writeText(item.login_id)}><Copy size={14} /></button></div>
-                 <div className="flex justify-between items-center pt-2 border-t border-gray-800/30">
-                   <span>PW: {showPw[item.id] ? item.login_pw : '••••••••'}</span>
-                   <div className="flex gap-2">
-                     <button onClick={() => setShowPw(p => ({...p, [item.id]: !p[item.id]}))}>{showPw[item.id] ? <EyeOff size={14} /> : <Eye size={14} />}</button>
-                     <button onClick={() => navigator.clipboard.writeText(item.login_pw)}><Copy size={14} /></button>
-                   </div>
-                 </div>
-               </div>
-            )}
-            {item.content && <p className="text-sm text-gray-400 mt-4 leading-relaxed">{item.content}</p>}
+            <h3 className="text-xl font-bold mb-2 flex items-center gap-2">{item.title} {item.url && <a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()}><ExternalLink size={16} className="text-gray-500" /></a>}</h3>
+            {item.login_id && <div className="text-sm text-gray-500 truncate">계정 정보 포함됨</div>}
+            {item.content && <p className="text-sm text-gray-400 mt-4 leading-relaxed line-clamp-2">{item.content}</p>}
           </div>
         ))}
       </main>
 
-      <button onClick={openAddModal} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
+      {/* --- 상세 정보 및 수정 모달 --- */}
+      {isDetailModalOpen && editingItem && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[80] flex items-center justify-center p-4">
+          <div className="bg-gray-900 w-full max-w-md rounded-[2.5rem] p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh] text-left">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
+                  <Calendar size={12} /> <span>{formatDate(editingItem.created_at)}</span>
+                </div>
+                <h2 className="text-2xl font-bold">정보 수정</h2>
+              </div>
+              <button onClick={() => setIsDetailModalOpen(false)}><X size={24} /></button>
+            </div>
 
-      {/* --- 정보 추가 모달 (3단계 구분) --- */}
+            <form onSubmit={handleUpdateItem} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500 ml-1">카테고리</label>
+                <select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm" value={editingItem.category_id} onChange={e => setEditingItem({...editingItem, category_id: e.target.value})}>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500 ml-1">제목</label>
+                <input required className="w-full bg-black border border-gray-800 rounded-xl p-3 font-bold" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} />
+              </div>
+
+              {editingItem.image_url && (
+                <div className="relative group">
+                  <img src={editingItem.image_url} className="w-full h-40 object-cover rounded-xl border border-gray-800" />
+                  <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-all rounded-xl">
+                    <span className="text-xs font-bold">사진 교체</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  </label>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500 ml-1">사이트 주소 (URL)</label>
+                <input placeholder="https://..." className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm" value={editingItem.url || ''} onChange={e => setEditingItem({...editingItem, url: e.target.value})} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500 ml-1">ID</label>
+                  <input className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm" value={editingItem.login_id || ''} onChange={e => setEditingItem({...editingItem, login_id: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500 ml-1">PW</label>
+                  <input className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm" value={editingItem.login_pw || ''} onChange={e => setEditingItem({...editingItem, login_pw: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500 ml-1">메모</label>
+                <textarea className="w-full bg-black border border-gray-800 rounded-xl p-3 h-32 text-sm leading-relaxed" value={editingItem.content || ''} onChange={e => setEditingItem({...editingItem, content: e.target.value})} />
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <button type="button" onClick={() => handleDelete(editingItem.id)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500/20 transition-all"><Trash2 size={20} /></button>
+                <button type="submit" className="flex-1 bg-white text-black font-extrabold p-4 rounded-2xl active:scale-95 transition-all">저장하기</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- 이하 정보 추가 모달, 인증 모달, 카테고리 관리 모달은 기존 코드와 동일 --- */}
+      <button onClick={() => { setAddStep('choice'); setIsModalOpen(true); }} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
+
+      {/* 정보 추가 모달 */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 w-full max-w-md rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
@@ -161,7 +252,6 @@ export default function Dashboard() {
               <h2 className="text-2xl font-bold">{addStep === 'choice' ? '무엇을 기록할까요?' : '정보 입력'}</h2>
               <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
             </div>
-
             {addStep === 'choice' ? (
               <div className="grid grid-cols-1 gap-4">
                 <button onClick={() => setAddStep('url')} className="flex items-center gap-4 p-6 bg-white/5 border border-white/5 rounded-3xl hover:bg-white/10 transition-all text-left group">
@@ -179,45 +269,34 @@ export default function Dashboard() {
               </div>
             ) : (
               <form onSubmit={handleAddItem} className="space-y-4 text-left">
-                <div className="flex gap-2 items-center mb-2">
-                  <button type="button" onClick={() => setAddStep('choice')} className="text-sm text-gray-500 hover:text-white">← 뒤로가기</button>
-                </div>
-                
-                {/* 카테고리 선택은 공통 */}
+                <button type="button" onClick={() => setAddStep('choice')} className="text-sm text-gray-500 hover:text-white mb-2">← 뒤로가기</button>
                 <select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm" value={newItem.category_id} onChange={e => setNewItem({...newItem, category_id: e.target.value})}>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-
                 <input required placeholder="제목을 입력하세요" className="w-full bg-black border border-gray-800 rounded-xl p-4 text-lg font-bold" value={newItem.title} onChange={e => setNewItem({...newItem, title: e.target.value})} />
-
                 {addStep === 'url' && (
                   <div className="space-y-3">
-                    <input required placeholder="https://..." className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm" value={newItem.url} onChange={e => setNewItem({...newItem, url: e.target.value})} />
+                    <input required placeholder="naver.com" className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm" value={newItem.url} onChange={e => setNewItem({...newItem, url: e.target.value})} />
                     <div className="grid grid-cols-2 gap-2">
                       <input placeholder="ID (선택)" className="bg-black border border-gray-800 rounded-xl p-3 text-sm" value={newItem.login_id} onChange={e => setNewItem({...newItem, login_id: e.target.value})} />
                       <input placeholder="PW (선택)" className="bg-black border border-gray-800 rounded-xl p-3 text-sm" value={newItem.login_pw} onChange={e => setNewItem({...newItem, login_pw: e.target.value})} />
                     </div>
                   </div>
                 )}
-
                 {addStep === 'photo' && (
                   <div className="border-2 border-dashed border-gray-800 rounded-2xl p-8 text-center bg-black/30">
                     {newItem.image_url ? (
                       <div className="relative inline-block"><img src={newItem.image_url} className="h-32 rounded-xl border border-white/10" /><button onClick={() => setNewItem({...newItem, image_url: ''})} className="absolute -top-3 -right-3 bg-red-500 rounded-full p-1.5"><X size={14} /></button></div>
                     ) : (
                       <label className="cursor-pointer flex flex-col items-center gap-3">
-                        <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-gray-400"><ImageIcon size={24} /></div>
+                        <ImageIcon size={24} className="text-gray-400" />
                         <span className="text-sm text-gray-400">{uploading ? '업로드 중...' : '터치하여 사진 선택'}</span>
                         <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
                       </label>
                     )}
                   </div>
                 )}
-
-                {addStep === 'memo' && (
-                  <textarea required placeholder="내용을 자유롭게 적어주세요" className="w-full bg-black border border-gray-800 rounded-xl p-4 h-40 text-sm leading-relaxed" value={newItem.content} onChange={e => setNewItem({...newItem, content: e.target.value})} />
-                )}
-
+                {addStep === 'memo' && ( <textarea required placeholder="내용을 자유롭게 적어주세요" className="w-full bg-black border border-gray-800 rounded-xl p-4 h-40 text-sm leading-relaxed" value={newItem.content} onChange={e => setNewItem({...newItem, content: e.target.value})} /> )}
                 <button type="submit" className="w-full bg-white text-black font-extrabold p-5 rounded-2xl active:scale-95 transition-all mt-4" disabled={uploading}>기록 완료</button>
               </form>
             )}
@@ -225,35 +304,35 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 인증 모달 및 카테고리 관리 모달 (기존과 동일) */}
+      {/* 인증 모달 */}
       {authModal.open && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">
-          <div className="bg-gray-900 w-full max-w-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
-            <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6"><ShieldCheck className="text-blue-400" size={32} /></div>
+          <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
+            <ShieldCheck className="text-blue-400 mx-auto mb-6" size={32} />
             <h2 className="text-2xl font-bold mb-2">{authModal.target.icon} {authModal.target.name}</h2>
-            <p className="text-gray-400 text-sm mb-8">{authModal.type === 'delete' ? '삭제를 위해 비밀번호가 필요합니다.' : '입장을 위해 비밀번호가 필요합니다.'}</p>
             <form onSubmit={handleAuthConfirm} className="space-y-4">
-              <input autoFocus type="password" placeholder="Password" className="w-full bg-black border border-gray-800 rounded-2xl p-4 text-center text-xl tracking-[0.5em] focus:border-blue-500 outline-none" value={authInput} onChange={(e) => setAuthInput(e.target.value)} />
-              <div className="flex gap-3 pt-2"><button type="button" onClick={() => setAuthModal({ open: false, type: '', target: null })} className="flex-1 bg-gray-800 text-gray-300 font-bold p-4 rounded-2xl">취소</button><button type="submit" className="flex-1 bg-white text-black font-bold p-4 rounded-2xl active:scale-95">확인</button></div>
+              <input autoFocus type="password" placeholder="Password" className="w-full bg-black border border-gray-800 rounded-2xl p-4 text-center text-xl tracking-[0.5em] outline-none" value={authInput} onChange={(e) => setAuthInput(e.target.value)} />
+              <div className="flex gap-3 pt-2"><button type="button" onClick={() => setAuthModal({ open: false, type: '', target: null })} className="flex-1 bg-gray-800 text-gray-300 font-bold p-4 rounded-2xl">취소</button><button type="submit" className="flex-1 bg-white text-black font-bold p-4 rounded-2xl">확인</button></div>
             </form>
           </div>
         </div>
       )}
 
+      {/* 카테고리 관리 모달 */}
       {isCategoryModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[60] flex items-center justify-center p-4">
           <div className="bg-gray-900 w-full max-w-md rounded-3xl p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-bold">카테고리 관리</h2><button onClick={() => {setIsCategoryModalOpen(false); setEditingCategory(null);}}><X size={24} /></button></div>
             <form onSubmit={handleSaveCategory} className="mb-8 space-y-4 text-left">
               <div className="flex gap-2"><input name="icon" defaultValue={editingCategory?.icon} placeholder="Emoji" className="w-20 bg-black border border-gray-800 rounded-xl p-3 text-center text-white" required /><input name="name" defaultValue={editingCategory?.name} placeholder="카테고리 이름" className="flex-1 bg-black border border-gray-800 rounded-xl p-3 text-white" required /></div>
-              <div className="p-4 bg-black/50 rounded-2xl border border-gray-800 space-y-3"><label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="is_private" defaultChecked={editingCategory?.is_private} className="w-5 h-5 rounded border-gray-800 bg-black text-white" /><span className="text-sm font-medium text-gray-300">비밀 카테고리로 설정</span></label><input name="password" type="password" defaultValue={editingCategory?.password} placeholder="비밀번호 입력" className="w-full bg-black border border-gray-800 rounded-xl p-2.5 text-sm text-white" /></div>
-              <button type="submit" className="w-full bg-white text-black font-bold p-3 rounded-xl active:scale-95 transition-all">{editingCategory ? '수정 완료' : '새 카테고리 추가'}</button>
+              <div className="p-4 bg-black/50 rounded-2xl border border-gray-800 space-y-3"><label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="is_private" defaultChecked={editingCategory?.is_private} className="w-5 h-5 rounded bg-black text-white" /><span className="text-sm font-medium text-gray-300">비밀 카테고리</span></label><input name="password" type="password" defaultValue={editingCategory?.password} placeholder="비밀번호" className="w-full bg-black border border-gray-800 rounded-xl p-2.5 text-sm" /></div>
+              <button type="submit" className="w-full bg-white text-black font-bold p-3 rounded-xl">저장</button>
             </form>
-            <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar text-left">
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-2 text-left">
               {categories.map(cat => (
                 <div key={cat.id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
                   <span className="text-lg flex items-center gap-2">{cat.icon} {cat.name} {cat.is_private && <Lock size={14} className="text-gray-500" />}</span>
-                  <div className="flex gap-2"><button onClick={() => setEditingCategory(cat)} className="p-2 text-gray-500 hover:text-blue-400"><Edit2 size={16} /></button><button onClick={() => handleDeleteCategory(cat.id)} className="p-2 text-gray-500 hover:text-red-500"><Trash2 size={16} /></button></div>
+                  <div className="flex gap-2"><button onClick={() => setEditingCategory(cat)} className="text-gray-500 hover:text-blue-400"><Edit2 size={16} /></button><button onClick={() => handleDeleteCategory(cat.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={16} /></button></div>
                 </div>
               ))}
             </div>

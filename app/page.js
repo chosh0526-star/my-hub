@@ -90,44 +90,47 @@ export default function Dashboard() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-[#000000] via-[#0f1117] to-[#1a1c24] text-gray-100 p-4 pb-24 font-sans">
+return (
+  <div className="min-h-screen bg-gradient-to-br from-[#000000] via-[#0f1117] to-[#1a1c24] text-gray-100 p-4 pb-24 font-sans">
+    
+    {/* 1. py-12를 pt-16 pb-6으로 조정해서 전체적인 세로 공간을 줄였습니다. */}
+    <header className="sticky top-0 bg-transparent pt-16 pb-6 z-10 flex flex-col items-center text-center">
       
-      <header className="sticky top-0 bg-transparent py-12 z-10 flex flex-col items-center text-center">
-        <h1 className="text-6xl md:text-7xl font-black mb-10 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)]">
-          The Archive
-        </h1>
-        
-        {/* 카테고리 중앙 정렬 및 설정 버튼 추가 */}
-        <div className="flex justify-center items-center gap-3 w-full px-4 pb-4">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar max-w-full">
-            <button 
-              onClick={() => setFilter('전체')} 
-              className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}
-            >
-              전체
-            </button>
-            {categories.map(cat => (
-              <button 
-                key={cat.id} 
-                onClick={() => setFilter(cat.name)} 
-                className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}
-              >
-                {cat.icon} {cat.name}
-              </button>
-            ))}
-          </div>
-          
-          {/* 설정 버튼 */}
+      {/* 2. mb-10을 mb-6으로 줄여서 제목과 카테고리를 더 가깝게 붙였습니다. */}
+      <h1 className="text-6xl md:text-7xl font-black mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)]">
+        The Archive
+      </h1>
+      
+      {/* 3. overflow-y-hidden을 추가해서 그 이상한 화살표를 강제로 삭제했습니다. */}
+      <div className="flex justify-center items-center gap-3 w-full px-4 overflow-x-auto overflow-y-hidden no-scrollbar">
+        <div className="flex gap-2 shrink-0">
           <button 
-            onClick={() => setIsCategoryModalOpen(true)}
-            className="p-3 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all backdrop-blur-lg"
+            onClick={() => setFilter('전체')} 
+            className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}
           >
-            <Settings size={20} />
+            전체
           </button>
+          {categories.map(cat => (
+            <button 
+              key={cat.id} 
+              onClick={() => setFilter(cat.name)} 
+              className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}
+            >
+              {cat.icon} {cat.name}
+            </button>
+          ))}
         </div>
-      </header>
-
+        
+        {/* 설정 버튼도 높이를 딱 맞췄습니다. */}
+        <button 
+          onClick={() => setIsCategoryModalOpen(true)}
+          className="p-2.5 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all backdrop-blur-lg shrink-0"
+        >
+          <Settings size={18} />
+        </button>
+      </div>
+    </header>
+    
       <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
         {items.filter(item => filter === '전체' || item.category_id === categories.find(c => c.name === filter)?.id).map(item => (
           <div key={item.id} className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl relative group">

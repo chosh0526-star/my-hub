@@ -51,7 +51,6 @@ export default function Dashboard() {
     setIsDetailModalOpen(true);
   };
 
-  // 즐겨찾기 토글 함수
   const toggleFavorite = async (e, item) => {
     e.stopPropagation();
     const { error } = await supabase.from('dashboard_items').update({ is_favorite: !item.is_favorite }).eq('id', item.id);
@@ -60,10 +59,8 @@ export default function Dashboard() {
 
   const handleUpdateItem = async (e) => {
     e.preventDefault();
-    const { error } = await supabase.from('dashboard_items').update({
-      ...editingItem,
-      url: fixUrl(editingItem.url)
-    }).eq('id', editingItem.id);
+    const updatedUrl = fixUrl(editingItem.url);
+    const { error } = await supabase.from('dashboard_items').update({ ...editingItem, url: updatedUrl }).eq('id', editingItem.id);
     if (error) alert('수정 실패!');
     else { setIsDetailModalOpen(false); fetchInitialData(); }
   };
@@ -112,7 +109,7 @@ export default function Dashboard() {
     e.preventDefault();
     const formData = new FormData(e.target);
     const name = formData.get('name');
-    const icon = formData.get('icon') || '📁'; // 이모지 자동 설정 로직
+    const icon = formData.get('icon') || '📁';
     const is_private = formData.get('is_private') === 'on';
     const password = formData.get('password');
 
@@ -151,9 +148,7 @@ export default function Dashboard() {
         <div className="flex justify-center items-center gap-3 w-full px-4 overflow-x-auto no-scrollbar pb-4">
           <div className="flex gap-2 shrink-0">
             <button onClick={() => setFilter('전체')} className={`px-6 py-2.5 rounded-full transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>전체</button>
-            
             <button onClick={() => setFilter('★즐겨찾기')} className={`px-6 py-2.5 rounded-full transition-all ${filter === '★즐겨찾기' ? 'bg-yellow-400 text-black font-bold shadow-[0_0_25px_rgba(250,204,21,0.4)] scale-105' : 'bg-white/5 text-yellow-500 backdrop-blur-lg border border-yellow-500/20 hover:bg-yellow-400/20'}`}>★ 즐겨찾기</button>
-
             {categories.map(cat => (
               <button key={cat.id} onClick={() => handleCategoryClick(cat)} className={`px-6 py-2.5 rounded-full transition-all flex items-center gap-2 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>
                 {cat.icon} {cat.name} {cat.is_private && <Lock size={12} />}
@@ -177,28 +172,38 @@ export default function Dashboard() {
           const itemCat = categories.find(c => c.id === item.category_id);
           const lowerSearch = searchTerm.toLowerCase();
           const matchesSearch = item.title?.toLowerCase().includes(lowerSearch) || item.content?.toLowerCase().includes(lowerSearch);
-          
           if (filter === '★즐겨찾기') return item.is_favorite && matchesSearch;
           const matchesCategory = filter === '전체' ? !itemCat?.is_private : itemCat?.name === filter;
           return matchesCategory && matchesSearch;
         }).map(item => (
           <div key={item.id} onClick={() => openDetail(item)} className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl relative group cursor-pointer hover:border-white/20 transition-all">
-            <button onClick={(e) => toggleFavorite(e, item)} className="absolute top-4 right-12 text-gray-600 hover:text-yellow-400 transition-colors z-10">
-              <Star size={20} fill={item.is_favorite ? "currentColor" : "none"} className={item.is_favorite ? "text-yellow-400" : ""} />
+            {/* 별표 버튼: 상단 우측 여백 확보 */}
+            <button onClick={(e) => toggleFavorite(e, item)} className="absolute top-5 right-5 text-gray-600 hover:text-yellow-400 transition-colors z-10">
+              <Star size={22} fill={item.is_favorite ? "currentColor" : "none"} className={item.is_favorite ? "text-yellow-400" : ""} />
             </button>
-            <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="absolute top-4 right-4 text-gray-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 z-10"><Trash2 size={18} /></button>
-            <div className="mb-4 flex justify-between items-center">
-              <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">{categories.find(c => c.id === item.category_id)?.name}</span>
-              <div className="text-[9px] text-gray-600 font-mono">{new Date(item.created_at).toLocaleDateString()}</div>
+            
+            {/* 헤더 영역: 카테고리와 날짜를 나란히 배치 */}
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">
+                {categories.find(c => c.id === item.category_id)?.name}
+              </span>
+              <div className="text-[9px] text-gray-600 font-mono">
+                {new Date(item.created_at).toLocaleDateString()}
+              </div>
             </div>
+
             {item.image_url && <img src={item.image_url} className="w-full h-48 object-cover rounded-2xl mb-4 border border-gray-800" alt="uploaded" />}
-            <h3 className="text-xl font-bold mb-2 flex items-center gap-2">{item.title} {item.url && <a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()}><ExternalLink size={16} className="text-gray-500 hover:text-white" /></a>}</h3>
+            <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
+              {item.title} 
+              {item.url && <a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()}><ExternalLink size={16} className="text-gray-500 hover:text-white" /></a>}
+            </h3>
             {item.login_id && <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-1"><Lock size={10}/> 계정 정보 포함됨</div>}
             {item.content && <p className="text-sm text-gray-400 mt-4 leading-relaxed line-clamp-2">{item.content}</p>}
           </div>
         ))}
       </main>
 
+      {/* 나머지 모달 코드는 동일하게 유지 */}
       <button onClick={() => { setAddStep('choice'); setIsModalOpen(true); }} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
 
       {/* 인증 모달 */}
@@ -258,7 +263,7 @@ export default function Dashboard() {
               <div className="space-y-1"><label className="text-xs text-gray-500 ml-1">사이트 주소 (URL)</label><input placeholder="naver.com" className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.url || ''} onChange={e => setEditingItem({...editingItem, url: e.target.value})} /></div>
               <div className="grid grid-cols-2 gap-2"><div className="space-y-1"><label className="text-xs text-gray-500 ml-1">ID</label><input className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.login_id || ''} onChange={e => setEditingItem({...editingItem, login_id: e.target.value})} /></div><div className="space-y-1"><label className="text-xs text-gray-500 ml-1">PW</label><input className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.login_pw || ''} onChange={e => setEditingItem({...editingItem, login_pw: e.target.value})} /></div></div>
               <div className="space-y-1"><label className="text-xs text-gray-500 ml-1">메모</label><textarea className="w-full bg-black border border-gray-800 rounded-xl p-3 h-32 text-sm leading-relaxed text-white" value={editingItem.content || ''} onChange={e => setEditingItem({...editingItem, content: e.target.value})} /></div>
-              <div className="flex gap-2 pt-4"><button type="button" onClick={() => handleDelete(editingItem.id)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500/20 transition-all"><Trash2 size={20} /></button><button type="submit" className="flex-1 bg-white text-black font-extrabold p-4 rounded-2xl active:scale-95 transition-all">저장하기</button></div>
+              <div className="flex gap-2 pt-4"><button type="button" onClick={() => { if(confirm('삭제하시겠습니까?')) { supabase.from('dashboard_items').delete().eq('id', editingItem.id).then(() => { setIsDetailModalOpen(false); fetchInitialData(); }); } }} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500/20 transition-all"><Trash2 size={20} /></button><button type="submit" className="flex-1 bg-white text-black font-extrabold p-4 rounded-2xl active:scale-95 transition-all">저장하기</button></div>
             </form>
           </div>
         </div>

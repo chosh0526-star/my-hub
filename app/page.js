@@ -65,13 +65,31 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-gray-100 p-4 pb-24 font-sans">
-      <header className="sticky top-0 bg-black/80 backdrop-blur-md py-4 z-10 flex flex-col items-start">
-        <h1 className="text-2xl font-bold mb-4 ml-2">My Hub</h1>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar w-full">
-          <button onClick={() => setFilter('전체')} className={`px-5 py-2 rounded-full whitespace-nowrap ${filter === '전체' ? 'bg-white text-black font-bold' : 'bg-gray-800 text-gray-400'}`}>전체</button>
+    // 1. 배경을 깊이감 있는 그라데이션으로 변경 (bg-gradient-to-br)
+    <div className="min-h-screen bg-gradient-to-br from-[#000000] via-[#0f1117] to-[#1a1c24] text-gray-100 p-4 pb-24 font-sans">
+      
+      {/* 2. 헤더 부분의 이름을 새로운 이름으로 변경 */}
+      <header className="sticky top-0 bg-transparent py-4 z-10">
+        <h1 className="text-3xl font-extrabold mb-4 ml-2 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">
+          The Archive {/* <--- 여기서 이름을 추천받은 이름으로 바꾸세요! */}
+        </h1>
+        
+        {/* 카테고리 버튼들 배경도 살짝 더 투명하게 처리 */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+          <button 
+            onClick={() => setFilter('전체')} 
+            className={`px-5 py-2 rounded-full whitespace-nowrap transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_20px_rgba(255,255,255,0.3)]' : 'bg-white/5 text-gray-400 backdrop-blur-md hover:bg-white/10'}`}
+          >
+            전체
+          </button>
           {categories.map(cat => (
-            <button key={cat.id} onClick={() => setFilter(cat.name)} className={`px-5 py-2 rounded-full whitespace-nowrap ${filter === cat.name ? 'bg-white text-black font-bold' : 'bg-gray-800 text-gray-400'}`}>{cat.icon} {cat.name}</button>
+            <button 
+              key={cat.id} 
+              onClick={() => setFilter(cat.name)} 
+              className={`px-5 py-2 rounded-full whitespace-nowrap transition-all ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_20px_rgba(255,255,255,0.3)]' : 'bg-white/5 text-gray-400 backdrop-blur-md hover:bg-white/10'}`}
+            >
+              {cat.icon} {cat.name}
+            </button>
           ))}
         </div>
       </header>

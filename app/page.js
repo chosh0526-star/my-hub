@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock } from 'lucide-react';
+import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck } from 'lucide-react';
 
 export default function Dashboard() {
   const [items, setItems] = useState([]);
@@ -15,6 +15,10 @@ export default function Dashboard() {
   // 카테고리 관리 상태
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+
+  // --- 추가된 비밀번호 인증 모달 상태 ---
+  const [authModal, setAuthModal] = useState({ open: false, type: '', target: null });
+  const [authInput, setAuthInput] = useState('');
 
   const [newItem, setNewItem] = useState({
     title: '', category_id: '', type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: ''
@@ -30,28 +34,49 @@ export default function Dashboard() {
     setItems(itemData || []);
   }
 
-  // 비밀번호 확인 후 카테고리 이동 함수
-  const handleCategoryClick = (cat) => {
-    if (cat.is_private) {
-      const inputPw = prompt(`${cat.name}은(는) 비밀 카테고리입니다. 비밀번호를 입력하세요:`);
-      if (inputPw === cat.password) {
-        setFilter(cat.name);
-      } else if (inputPw !== null) {
-        alert("비밀번호가 틀렸습니다.");
+  // 인증 모달 열기 함수 (보기/삭제 공용)
+  const openAuthModal = (type, target) => {
+    setAuthModal({ open: true, type, target });
+    setAuthInput('');
+  };
+
+  // 인증 확인 함수
+  const handleAuthConfirm = async (e) => {
+    e.preventDefault();
+    if (authInput === authModal.target.password) {
+      if (authModal.type === 'view') {
+        setFilter(authModal.target.name);
+      } else if (authModal.type === 'delete') {
+        await supabase.from('categories').delete().eq('id', authModal.target.id);
+        fetchInitialData();
       }
+      setAuthModal({ open: false, type: '', target: null });
+    } else {
+      alert("비밀번호가 일치하지 않습니다.");
+    }
+  };
+
+  const handleCategoryClick = (cat) => {
+    if (cat.is_private && filter !== cat.name) {
+      openAuthModal('view', cat);
     } else {
       setFilter(cat.name);
     }
   };
 
-  // 카테고리 관리 함수들
   async function handleDeleteCategory(id) {
-    if (confirm('이 카테고리를 삭제하면 포함된 모든 정보도 삭제됩니다. 계속할까요?')) {
-      await supabase.from('categories').delete().eq('id', id);
-      fetchInitialData();
+    const cat = categories.find(c => c.id === id);
+    if (cat.is_private) {
+      openAuthModal('delete', cat);
+    } else {
+      if (confirm('이 카테고리를 삭제하면 포함된 모든 정보도 삭제됩니다. 계속할까요?')) {
+        await supabase.from('categories').delete().eq('id', id);
+        fetchInitialData();
+      }
     }
   }
 
+  // --- 기존의 카테고리 저장/이미지 업로드/아이템 추가 함수들은 동일하게 유지 ---
   async function handleSaveCategory(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -70,7 +95,6 @@ export default function Dashboard() {
     fetchInitialData();
   }
 
-  // 이미지 및 아이템 관리 함수 (기존과 동일)
   async function handleImageUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -80,7 +104,7 @@ export default function Dashboard() {
     const filePath = `uploads/${fileName}`;
     let { error: uploadError } = await supabase.storage.from('images').upload(filePath, file);
     if (uploadError) {
-      alert('업로드 실패: ' + uploadError.message);
+      alert('업로드 실패!');
     } else {
       const { data } = supabase.storage.from('images').getPublicUrl(filePath);
       setNewItem({ ...newItem, image_url: data.publicUrl, type: 'image' });
@@ -116,27 +140,14 @@ export default function Dashboard() {
         
         <div className="flex justify-center items-center gap-3 w-full px-4 overflow-x-auto overflow-y-hidden no-scrollbar">
           <div className="flex gap-2 shrink-0">
-            <button 
-              onClick={() => setFilter('전체')} 
-              className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}
-            >
-              전체
-            </button>
+            <button onClick={() => setFilter('전체')} className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>전체</button>
             {categories.map(cat => (
-              <button 
-                key={cat.id} 
-                onClick={() => handleCategoryClick(cat)} 
-                className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}
-              >
+              <button key={cat.id} onClick={() => handleCategoryClick(cat)} className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>
                 {cat.icon} {cat.name} {cat.is_private && <Lock size={12} className={filter === cat.name ? 'text-black/50' : 'text-gray-600'} />}
               </button>
             ))}
           </div>
-          
-          <button 
-            onClick={() => setIsCategoryModalOpen(true)}
-            className="p-2.5 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all backdrop-blur-lg shrink-0"
-          >
+          <button onClick={() => setIsCategoryModalOpen(true)} className="p-2.5 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all backdrop-blur-lg shrink-0">
             <Settings size={18} />
           </button>
         </div>
@@ -145,22 +156,14 @@ export default function Dashboard() {
       <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
         {items.filter(item => {
           const itemCat = categories.find(c => c.id === item.category_id);
-          if (filter === '전체') return !itemCat?.is_private; // 전체 탭에서는 비밀 카테고리 숨김
+          if (filter === '전체') return !itemCat?.is_private;
           return itemCat?.name === filter;
         }).map(item => (
           <div key={item.id} className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl relative group">
-            <button onClick={() => handleDelete(item.id)} className="absolute top-4 right-4 text-gray-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-              <Trash2 size={18} />
-            </button>
-            <div className="mb-4">
-              <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">
-                {categories.find(c => c.id === item.category_id)?.name}
-              </span>
-            </div>
+            <button onClick={() => handleDelete(item.id)} className="absolute top-4 right-4 text-gray-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
+            <div className="mb-4"><span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">{categories.find(c => c.id === item.category_id)?.name}</span></div>
             {item.image_url && <img src={item.image_url} className="w-full h-48 object-cover rounded-2xl mb-4 border border-gray-800" alt="uploaded" />}
-            <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
-              {item.title} {item.url && <a href={item.url} target="_blank"><ExternalLink size={16} className="text-gray-500" /></a>}
-            </h3>
+            <h3 className="text-xl font-bold mb-2 flex items-center gap-2">{item.title} {item.url && <a href={item.url} target="_blank"><ExternalLink size={16} className="text-gray-500" /></a>}</h3>
             {item.login_id && (
                <div className="space-y-3 bg-black/50 rounded-2xl p-4 border border-gray-800/50 mt-2 text-sm text-gray-300">
                  <div className="flex justify-between items-center"><span>ID: {item.login_id}</span><button onClick={() => navigator.clipboard.writeText(item.login_id)}><Copy size={14} /></button></div>
@@ -180,14 +183,40 @@ export default function Dashboard() {
 
       <button onClick={() => setIsModalOpen(true)} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
 
-      {/* 정보 추가 모달 (기존과 동일) */}
+      {/* --- 인증 모달 (보여주기/삭제용 심플 UI) --- */}
+      {authModal.open && (
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6">
+          <div className="bg-gray-900 w-full max-w-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl text-center">
+            <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <ShieldCheck className="text-blue-400" size={32} />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">{authModal.target.icon} {authModal.target.name}</h2>
+            <p className="text-gray-400 text-sm mb-8">
+              {authModal.type === 'delete' ? '이 비밀 카테고리를 삭제하려면\n비밀번호를 입력하세요.' : '비밀 카테고리 입장을 위해\n비밀번호를 입력하세요.'}
+            </p>
+            <form onSubmit={handleAuthConfirm} className="space-y-4">
+              <input 
+                autoFocus
+                type="password" 
+                placeholder="Password" 
+                className="w-full bg-black border border-gray-800 rounded-2xl p-4 text-center text-xl tracking-[0.5em] focus:border-blue-500 outline-none transition-all"
+                value={authInput}
+                onChange={(e) => setAuthInput(e.target.value)}
+              />
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setAuthModal({ open: false, type: '', target: null })} className="flex-1 bg-gray-800 text-gray-300 font-bold p-4 rounded-2xl hover:bg-gray-700 transition-all">취소</button>
+                <button type="submit" className="flex-1 bg-white text-black font-bold p-4 rounded-2xl hover:bg-gray-100 active:scale-95 transition-all">확인</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 정보 추가 모달 (기존 유지) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-gray-900 w-full max-w-md rounded-3xl p-6 border border-gray-800 my-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">정보 추가하기</h2>
-              <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
-            </div>
+            <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold">정보 추가하기</h2><button onClick={() => setIsModalOpen(false)}><X size={24} /></button></div>
             <form onSubmit={handleAddItem} className="space-y-4 text-left">
               <input required placeholder="제목" className="w-full bg-black border border-gray-800 rounded-xl p-3" value={newItem.title} onChange={e => setNewItem({...newItem, title: e.target.value})} />
               <select className="w-full bg-black border border-gray-800 rounded-xl p-3" value={newItem.category_id} onChange={e => setNewItem({...newItem, category_id: e.target.value})}>
@@ -197,18 +226,11 @@ export default function Dashboard() {
                 {newItem.image_url ? (
                   <div className="relative inline-block"><img src={newItem.image_url} className="h-24 rounded-lg" /><button onClick={() => setNewItem({...newItem, image_url: '', type: 'link'})} className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1"><X size={12} /></button></div>
                 ) : (
-                  <label className="cursor-pointer flex flex-col items-center gap-2">
-                    <ImageIcon className="text-gray-500" />
-                    <span className="text-xs text-gray-500">{uploading ? '업로드 중...' : '이미지 캡처본 업로드'}</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
-                  </label>
+                  <label className="cursor-pointer flex flex-col items-center gap-2"><ImageIcon className="text-gray-500" /><span className="text-xs text-gray-500">{uploading ? '업로드 중...' : '이미지 캡처본 업로드'}</span><input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} /></label>
                 )}
               </div>
               <input placeholder="URL" className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm" value={newItem.url} onChange={e => setNewItem({...newItem, url: e.target.value})} />
-              <div className="grid grid-cols-2 gap-2">
-                <input placeholder="ID" className="bg-black border border-gray-800 rounded-xl p-3 text-sm" value={newItem.login_id} onChange={e => setNewItem({...newItem, login_id: e.target.value})} />
-                <input placeholder="PW" className="bg-black border border-gray-800 rounded-xl p-3 text-sm" value={newItem.login_pw} onChange={e => setNewItem({...newItem, login_pw: e.target.value})} />
-              </div>
+              <div className="grid grid-cols-2 gap-2"><input placeholder="ID" className="bg-black border border-gray-800 rounded-xl p-3 text-sm" value={newItem.login_id} onChange={e => setNewItem({...newItem, login_id: e.target.value})} /><input placeholder="PW" className="bg-black border border-gray-800 rounded-xl p-3 text-sm" value={newItem.login_pw} onChange={e => setNewItem({...newItem, login_pw: e.target.value})} /></div>
               <textarea placeholder="메모" className="w-full bg-black border border-gray-800 rounded-xl p-3 h-20 text-sm" value={newItem.content} onChange={e => setNewItem({...newItem, content: e.target.value})} />
               <button type="submit" className="w-full bg-white text-black font-bold p-4 rounded-xl active:scale-95" disabled={uploading}>저장하기</button>
             </form>
@@ -216,39 +238,20 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 카테고리 관리 모달 (비밀 설정 기능 추가) */}
+      {/* 카테고리 관리 모달 (기존 유지) */}
       {isCategoryModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[60] flex items-center justify-center p-4">
           <div className="bg-gray-900 w-full max-w-md rounded-3xl p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-bold">카테고리 관리</h2>
-              <button onClick={() => {setIsCategoryModalOpen(false); setEditingCategory(null);}}><X size={24} /></button>
-            </div>
+            <div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-bold">카테고리 관리</h2><button onClick={() => {setIsCategoryModalOpen(false); setEditingCategory(null);}}><X size={24} /></button></div>
             <form onSubmit={handleSaveCategory} className="mb-8 space-y-4 text-left">
-              <div className="flex gap-2">
-                <input name="icon" defaultValue={editingCategory?.icon} placeholder="Emoji" className="w-20 bg-black border border-gray-800 rounded-xl p-3 text-center text-white" required />
-                <input name="name" defaultValue={editingCategory?.name} placeholder="카테고리 이름" className="flex-1 bg-black border border-gray-800 rounded-xl p-3 text-white" required />
-              </div>
-              
-              {/* 비밀 설정 영역 */}
-              <div className="p-4 bg-black/50 rounded-2xl border border-gray-800 space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" name="is_private" defaultChecked={editingCategory?.is_private} className="w-5 h-5 rounded border-gray-800 bg-black text-white" />
-                  <span className="text-sm font-medium text-gray-300">비밀 카테고리로 설정</span>
-                </label>
-                <input name="password" type="password" defaultValue={editingCategory?.password} placeholder="비밀번호 입력" className="w-full bg-black border border-gray-800 rounded-xl p-2.5 text-sm text-white" />
-              </div>
-
-              <button type="submit" className="w-full bg-white text-black font-bold p-3 rounded-xl active:scale-95 transition-all">
-                {editingCategory ? '수정 완료' : '새 카테고리 추가'}
-              </button>
+              <div className="flex gap-2"><input name="icon" defaultValue={editingCategory?.icon} placeholder="Emoji" className="w-20 bg-black border border-gray-800 rounded-xl p-3 text-center text-white" required /><input name="name" defaultValue={editingCategory?.name} placeholder="카테고리 이름" className="flex-1 bg-black border border-gray-800 rounded-xl p-3 text-white" required /></div>
+              <div className="p-4 bg-black/50 rounded-2xl border border-gray-800 space-y-3"><label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="is_private" defaultChecked={editingCategory?.is_private} className="w-5 h-5 rounded border-gray-800 bg-black text-white" /><span className="text-sm font-medium text-gray-300">비밀 카테고리로 설정</span></label><input name="password" type="password" defaultValue={editingCategory?.password} placeholder="비밀번호 입력" className="w-full bg-black border border-gray-800 rounded-xl p-2.5 text-sm text-white" /></div>
+              <button type="submit" className="w-full bg-white text-black font-bold p-3 rounded-xl active:scale-95 transition-all">{editingCategory ? '수정 완료' : '새 카테고리 추가'}</button>
             </form>
             <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar text-left">
               {categories.map(cat => (
                 <div key={cat.id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <span className="text-lg flex items-center gap-2">
-                    {cat.icon} {cat.name} {cat.is_private && <Lock size={14} className="text-gray-500" />}
-                  </span>
+                  <span className="text-lg flex items-center gap-2">{cat.icon} {cat.name} {cat.is_private && <Lock size={14} className="text-gray-500" />}</span>
                   <div className="flex gap-2">
                     <button onClick={() => setEditingCategory(cat)} className="p-2 text-gray-500 hover:text-blue-400"><Edit2 size={16} /></button>
                     <button onClick={() => handleDeleteCategory(cat.id)} className="p-2 text-gray-500 hover:text-red-500"><Trash2 size={16} /></button>

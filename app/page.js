@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Clock, Calendar, Search } from 'lucide-react';
+import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Clock, Calendar, Search, Star } from 'lucide-react';
 
 export default function Dashboard() {
   const [items, setItems] = useState([]);
@@ -39,14 +39,10 @@ export default function Dashboard() {
     return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
   };
 
-  // --- 강력해진 URL 보정 함수 ---
   const fixUrl = (url) => {
     if (!url) return "";
     let trimmedUrl = url.trim();
-    // http:// 또는 https:// 가 없으면 자동으로 붙여줍니다.
-    if (!/^https?:\/\//i.test(trimmedUrl)) {
-      return `https://${trimmedUrl}`;
-    }
+    if (!/^https?:\/\//i.test(trimmedUrl)) return `https://${trimmedUrl}`;
     return trimmedUrl;
   };
 
@@ -55,22 +51,25 @@ export default function Dashboard() {
     setIsDetailModalOpen(true);
   };
 
+  // 즐겨찾기 토글 함수
+  const toggleFavorite = async (e, item) => {
+    e.stopPropagation();
+    const { error } = await supabase.from('dashboard_items').update({ is_favorite: !item.is_favorite }).eq('id', item.id);
+    if (!error) fetchInitialData();
+  };
+
   const handleUpdateItem = async (e) => {
     e.preventDefault();
-    // 수정 저장 시에도 URL 보정 적용
-    const updatedUrl = fixUrl(editingItem.url);
     const { error } = await supabase.from('dashboard_items').update({
       ...editingItem,
-      url: updatedUrl
+      url: fixUrl(editingItem.url)
     }).eq('id', editingItem.id);
-
     if (error) alert('수정 실패!');
     else { setIsDetailModalOpen(false); fetchInitialData(); }
   };
 
   async function handleAddItem(e) {
     e.preventDefault();
-    // 추가 저장 시 URL 보정 적용
     const finalItem = { 
       ...newItem, 
       url: fixUrl(newItem.url),
@@ -84,33 +83,26 @@ export default function Dashboard() {
   const handleAuthConfirm = async (e) => {
     e.preventDefault();
     if (authInput === authModal.target.password) {
-      if (authModal.type === 'view') {
-        setFilter(authModal.target.name);
-      } else if (authModal.type === 'delete') {
+      if (authModal.type === 'view') setFilter(authModal.target.name);
+      else if (authModal.type === 'delete') {
         await supabase.from('categories').delete().eq('id', authModal.target.id);
         fetchInitialData();
       }
       setAuthModal({ open: false, type: '', target: null });
-    } else {
-      alert("비밀번호가 일치하지 않습니다.");
-    }
+    } else alert("비밀번호가 일치하지 않습니다.");
   };
 
-  // --- 비밀 카테고리 클릭 시 무조건 인증하도록 수정 ---
   const handleCategoryClick = (cat) => {
     if (cat.is_private) {
-      // 이제 이미 선택된 상태라도 다시 클릭하면 비밀번호를 물어봅니다.
       setAuthModal({ open: true, type: 'view', target: cat });
       setAuthInput('');
-    } else {
-      setFilter(cat.name);
-    }
+    } else setFilter(cat.name);
   };
 
   async function handleDeleteCategory(id) {
     const cat = categories.find(c => c.id === id);
     if (cat.is_private) setAuthModal({ open: true, type: 'delete', target: cat });
-    else if (confirm('이 카테고리를 삭제하면 포함된 모든 정보도 삭제됩니다.')) {
+    else if (confirm('카테고리를 삭제하면 포함된 모든 정보도 삭제됩니다.')) {
       await supabase.from('categories').delete().eq('id', id);
       fetchInitialData();
     }
@@ -119,7 +111,11 @@ export default function Dashboard() {
   async function handleSaveCategory(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const name = formData.get('name'), icon = formData.get('icon'), is_private = formData.get('is_private') === 'on', password = formData.get('password');
+    const name = formData.get('name');
+    const icon = formData.get('icon') || '📁'; // 이모지 자동 설정 로직
+    const is_private = formData.get('is_private') === 'on';
+    const password = formData.get('password');
+
     if (editingCategory) await supabase.from('categories').update({ name, icon, is_private, password }).eq('id', editingCategory.id);
     else await supabase.from('categories').insert([{ name, icon, is_private, password, display_order: categories.length + 1 }]);
     setEditingCategory(null); e.target.reset(); fetchInitialData();
@@ -132,8 +128,7 @@ export default function Dashboard() {
     const fileName = `${Math.random()}.${file.name.split('.').pop()}`;
     const filePath = `uploads/${fileName}`;
     let { error } = await supabase.storage.from('images').upload(filePath, file);
-    if (error) alert('업로드 실패!');
-    else {
+    if (!error) {
       const { data } = supabase.storage.from('images').getPublicUrl(filePath);
       if (isDetailModalOpen) setEditingItem({ ...editingItem, image_url: data.publicUrl });
       else setNewItem({ ...newItem, image_url: data.publicUrl, type: 'image' });
@@ -155,10 +150,13 @@ export default function Dashboard() {
         
         <div className="flex justify-center items-center gap-3 w-full px-4 overflow-x-auto no-scrollbar pb-4">
           <div className="flex gap-2 shrink-0">
-            <button onClick={() => setFilter('전체')} className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>전체</button>
+            <button onClick={() => setFilter('전체')} className={`px-6 py-2.5 rounded-full transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>전체</button>
+            
+            <button onClick={() => setFilter('★즐겨찾기')} className={`px-6 py-2.5 rounded-full transition-all ${filter === '★즐겨찾기' ? 'bg-yellow-400 text-black font-bold shadow-[0_0_25px_rgba(250,204,21,0.4)] scale-105' : 'bg-white/5 text-yellow-500 backdrop-blur-lg border border-yellow-500/20 hover:bg-yellow-400/20'}`}>★ 즐겨찾기</button>
+
             {categories.map(cat => (
-              <button key={cat.id} onClick={() => handleCategoryClick(cat)} className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all flex items-center gap-2 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>
-                {cat.icon} {cat.name} {cat.is_private && <Lock size={12} className={filter === cat.name ? 'text-black/50' : 'text-gray-600'} />}
+              <button key={cat.id} onClick={() => handleCategoryClick(cat)} className={`px-6 py-2.5 rounded-full transition-all flex items-center gap-2 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>
+                {cat.icon} {cat.name} {cat.is_private && <Lock size={12} />}
               </button>
             ))}
           </div>
@@ -177,12 +175,18 @@ export default function Dashboard() {
       <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 text-left px-2">
         {items.filter(item => {
           const itemCat = categories.find(c => c.id === item.category_id);
-          const matchesCategory = filter === '전체' ? !itemCat?.is_private : itemCat?.name === filter;
           const lowerSearch = searchTerm.toLowerCase();
           const matchesSearch = item.title?.toLowerCase().includes(lowerSearch) || item.content?.toLowerCase().includes(lowerSearch);
+          
+          if (filter === '★즐겨찾기') return item.is_favorite && matchesSearch;
+          const matchesCategory = filter === '전체' ? !itemCat?.is_private : itemCat?.name === filter;
           return matchesCategory && matchesSearch;
         }).map(item => (
           <div key={item.id} onClick={() => openDetail(item)} className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl relative group cursor-pointer hover:border-white/20 transition-all">
+            <button onClick={(e) => toggleFavorite(e, item)} className="absolute top-4 right-12 text-gray-600 hover:text-yellow-400 transition-colors z-10">
+              <Star size={20} fill={item.is_favorite ? "currentColor" : "none"} className={item.is_favorite ? "text-yellow-400" : ""} />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="absolute top-4 right-4 text-gray-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 z-10"><Trash2 size={18} /></button>
             <div className="mb-4 flex justify-between items-center">
               <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">{categories.find(c => c.id === item.category_id)?.name}</span>
               <div className="text-[9px] text-gray-600 font-mono">{new Date(item.created_at).toLocaleDateString()}</div>
@@ -266,7 +270,11 @@ export default function Dashboard() {
           <div className="bg-gray-900 w-full max-w-md rounded-3xl p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-bold">카테고리 관리</h2><button onClick={() => {setIsCategoryModalOpen(false); setEditingCategory(null);}}><X size={24} /></button></div>
             <form onSubmit={handleSaveCategory} className="mb-8 space-y-4">
-              <div className="flex gap-2"><input name="icon" defaultValue={editingCategory?.icon} placeholder="Emoji" className="w-20 bg-black border border-gray-800 rounded-xl p-3 text-center text-white" required /><input name="name" defaultValue={editingCategory?.name} placeholder="카테고리 이름" className="flex-1 bg-black border border-gray-800 rounded-xl p-3 text-white" required /></div>
+              <div className="flex gap-2">
+                <input name="icon" defaultValue={editingCategory?.icon} placeholder="📁" className="w-20 bg-black border border-gray-800 rounded-xl p-3 text-center text-white" />
+                <input name="name" required defaultValue={editingCategory?.name} placeholder="카테고리 이름" className="flex-1 bg-black border border-gray-800 rounded-xl p-3 text-white" />
+              </div>
+              <p className="text-[10px] text-gray-500 -mt-2 ml-1">* 이모지를 비워두면 기본 아이콘(📁)으로 설정됩니다.</p>
               <div className="p-4 bg-black/50 rounded-2xl border border-gray-800 space-y-3"><label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="is_private" defaultChecked={editingCategory?.is_private} className="w-5 h-5 rounded bg-black text-white" /><span className="text-sm font-medium text-gray-300">비밀 카테고리</span></label><input name="password" type="password" defaultValue={editingCategory?.password} placeholder="비밀번호" className="w-full bg-black border border-gray-800 rounded-xl p-2.5 text-sm text-white" /></div>
               <button type="submit" className="w-full bg-white text-black font-bold p-3 rounded-xl">저장</button>
             </form>

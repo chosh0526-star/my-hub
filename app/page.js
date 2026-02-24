@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2 } from 'lucide-react';
+import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock } from 'lucide-react';
 
 export default function Dashboard() {
   const [items, setItems] = useState([]);
@@ -12,10 +12,9 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   
-  // --- 여기서부터 추가된 카테고리 관리 상태 ---
+  // 카테고리 관리 상태
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
-  // ----------------------------------------
 
   const [newItem, setNewItem] = useState({
     title: '', category_id: '', type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: ''
@@ -31,7 +30,21 @@ export default function Dashboard() {
     setItems(itemData || []);
   }
 
-  // --- 추가된 카테고리 관리 함수들 ---
+  // 비밀번호 확인 후 카테고리 이동 함수
+  const handleCategoryClick = (cat) => {
+    if (cat.is_private) {
+      const inputPw = prompt(`${cat.name}은(는) 비밀 카테고리입니다. 비밀번호를 입력하세요:`);
+      if (inputPw === cat.password) {
+        setFilter(cat.name);
+      } else if (inputPw !== null) {
+        alert("비밀번호가 틀렸습니다.");
+      }
+    } else {
+      setFilter(cat.name);
+    }
+  };
+
+  // 카테고리 관리 함수들
   async function handleDeleteCategory(id) {
     if (confirm('이 카테고리를 삭제하면 포함된 모든 정보도 삭제됩니다. 계속할까요?')) {
       await supabase.from('categories').delete().eq('id', id);
@@ -41,20 +54,23 @@ export default function Dashboard() {
 
   async function handleSaveCategory(e) {
     e.preventDefault();
-    const name = e.target.name.value;
-    const icon = e.target.icon.value;
+    const formData = new FormData(e.target);
+    const name = formData.get('name');
+    const icon = formData.get('icon');
+    const is_private = formData.get('is_private') === 'on';
+    const password = formData.get('password');
 
     if (editingCategory) {
-      await supabase.from('categories').update({ name, icon }).eq('id', editingCategory.id);
+      await supabase.from('categories').update({ name, icon, is_private, password }).eq('id', editingCategory.id);
     } else {
-      await supabase.from('categories').insert([{ name, icon, display_order: categories.length + 1 }]);
+      await supabase.from('categories').insert([{ name, icon, is_private, password, display_order: categories.length + 1 }]);
     }
     setEditingCategory(null);
     e.target.reset();
     fetchInitialData();
   }
-  // ------------------------------
 
+  // 이미지 및 아이템 관리 함수 (기존과 동일)
   async function handleImageUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -90,49 +106,48 @@ export default function Dashboard() {
     }
   }
 
-return (
-  <div className="min-h-screen bg-gradient-to-br from-[#000000] via-[#0f1117] to-[#1a1c24] text-gray-100 p-4 pb-24 font-sans">
-    
-    {/* 1. py-12를 pt-16 pb-6으로 조정해서 전체적인 세로 공간을 줄였습니다. */}
-    <header className="sticky top-0 bg-transparent pt-16 pb-6 z-10 flex flex-col items-center text-center">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#000000] via-[#0f1117] to-[#1a1c24] text-gray-100 p-4 pb-24 font-sans">
       
-      {/* 2. mb-10을 mb-6으로 줄여서 제목과 카테고리를 더 가깝게 붙였습니다. */}
-      <h1 className="text-6xl md:text-7xl font-black mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)]">
-        The Archive
-      </h1>
-      
-      {/* 3. overflow-y-hidden을 추가해서 그 이상한 화살표를 강제로 삭제했습니다. */}
-      <div className="flex justify-center items-center gap-3 w-full px-4 overflow-x-auto overflow-y-hidden no-scrollbar">
-        <div className="flex gap-2 shrink-0">
-          <button 
-            onClick={() => setFilter('전체')} 
-            className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}
-          >
-            전체
-          </button>
-          {categories.map(cat => (
-            <button 
-              key={cat.id} 
-              onClick={() => setFilter(cat.name)} 
-              className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}
-            >
-              {cat.icon} {cat.name}
-            </button>
-          ))}
-        </div>
+      <header className="sticky top-0 bg-transparent pt-16 pb-6 z-10 flex flex-col items-center text-center">
+        <h1 className="text-6xl md:text-7xl font-black mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)]">
+          The Archive
+        </h1>
         
-        {/* 설정 버튼도 높이를 딱 맞췄습니다. */}
-        <button 
-          onClick={() => setIsCategoryModalOpen(true)}
-          className="p-2.5 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all backdrop-blur-lg shrink-0"
-        >
-          <Settings size={18} />
-        </button>
-      </div>
-    </header>
-    
+        <div className="flex justify-center items-center gap-3 w-full px-4 overflow-x-auto overflow-y-hidden no-scrollbar">
+          <div className="flex gap-2 shrink-0">
+            <button 
+              onClick={() => setFilter('전체')} 
+              className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}
+            >
+              전체
+            </button>
+            {categories.map(cat => (
+              <button 
+                key={cat.id} 
+                onClick={() => handleCategoryClick(cat)} 
+                className={`px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_25px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}
+              >
+                {cat.icon} {cat.name} {cat.is_private && <Lock size={12} className={filter === cat.name ? 'text-black/50' : 'text-gray-600'} />}
+              </button>
+            ))}
+          </div>
+          
+          <button 
+            onClick={() => setIsCategoryModalOpen(true)}
+            className="p-2.5 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all backdrop-blur-lg shrink-0"
+          >
+            <Settings size={18} />
+          </button>
+        </div>
+      </header>
+
       <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-        {items.filter(item => filter === '전체' || item.category_id === categories.find(c => c.name === filter)?.id).map(item => (
+        {items.filter(item => {
+          const itemCat = categories.find(c => c.id === item.category_id);
+          if (filter === '전체') return !itemCat?.is_private; // 전체 탭에서는 비밀 카테고리 숨김
+          return itemCat?.name === filter;
+        }).map(item => (
           <div key={item.id} className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl relative group">
             <button onClick={() => handleDelete(item.id)} className="absolute top-4 right-4 text-gray-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
               <Trash2 size={18} />
@@ -165,7 +180,7 @@ return (
 
       <button onClick={() => setIsModalOpen(true)} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
 
-      {/* 정보 추가 모달 */}
+      {/* 정보 추가 모달 (기존과 동일) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-gray-900 w-full max-w-md rounded-3xl p-6 border border-gray-800 my-auto">
@@ -173,7 +188,7 @@ return (
               <h2 className="text-xl font-bold">정보 추가하기</h2>
               <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
             </div>
-            <form onSubmit={handleAddItem} className="space-y-4">
+            <form onSubmit={handleAddItem} className="space-y-4 text-left">
               <input required placeholder="제목" className="w-full bg-black border border-gray-800 rounded-xl p-3" value={newItem.title} onChange={e => setNewItem({...newItem, title: e.target.value})} />
               <select className="w-full bg-black border border-gray-800 rounded-xl p-3" value={newItem.category_id} onChange={e => setNewItem({...newItem, category_id: e.target.value})}>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -201,19 +216,29 @@ return (
         </div>
       )}
 
-      {/* 카테고리 관리 모달 */}
+      {/* 카테고리 관리 모달 (비밀 설정 기능 추가) */}
       {isCategoryModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[60] flex items-center justify-center p-4">
-          <div className="bg-gray-900 w-full max-w-md rounded-3xl p-8 border border-white/10 shadow-2xl">
+          <div className="bg-gray-900 w-full max-w-md rounded-3xl p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-2xl font-bold">카테고리 관리</h2>
               <button onClick={() => {setIsCategoryModalOpen(false); setEditingCategory(null);}}><X size={24} /></button>
             </div>
-            <form onSubmit={handleSaveCategory} className="mb-8 space-y-3 text-left">
-              <div className="flex gap-2 text-black">
+            <form onSubmit={handleSaveCategory} className="mb-8 space-y-4 text-left">
+              <div className="flex gap-2">
                 <input name="icon" defaultValue={editingCategory?.icon} placeholder="Emoji" className="w-20 bg-black border border-gray-800 rounded-xl p-3 text-center text-white" required />
                 <input name="name" defaultValue={editingCategory?.name} placeholder="카테고리 이름" className="flex-1 bg-black border border-gray-800 rounded-xl p-3 text-white" required />
               </div>
+              
+              {/* 비밀 설정 영역 */}
+              <div className="p-4 bg-black/50 rounded-2xl border border-gray-800 space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" name="is_private" defaultChecked={editingCategory?.is_private} className="w-5 h-5 rounded border-gray-800 bg-black text-white" />
+                  <span className="text-sm font-medium text-gray-300">비밀 카테고리로 설정</span>
+                </label>
+                <input name="password" type="password" defaultValue={editingCategory?.password} placeholder="비밀번호 입력" className="w-full bg-black border border-gray-800 rounded-xl p-2.5 text-sm text-white" />
+              </div>
+
               <button type="submit" className="w-full bg-white text-black font-bold p-3 rounded-xl active:scale-95 transition-all">
                 {editingCategory ? '수정 완료' : '새 카테고리 추가'}
               </button>
@@ -221,7 +246,9 @@ return (
             <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar text-left">
               {categories.map(cat => (
                 <div key={cat.id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <span className="text-lg">{cat.icon} {cat.name}</span>
+                  <span className="text-lg flex items-center gap-2">
+                    {cat.icon} {cat.name} {cat.is_private && <Lock size={14} className="text-gray-500" />}
+                  </span>
                   <div className="flex gap-2">
                     <button onClick={() => setEditingCategory(cat)} className="p-2 text-gray-500 hover:text-blue-400"><Edit2 size={16} /></button>
                     <button onClick={() => handleDeleteCategory(cat.id)} className="p-2 text-gray-500 hover:text-red-500"><Trash2 size={16} /></button>

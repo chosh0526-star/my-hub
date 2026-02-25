@@ -31,7 +31,6 @@ export default function Dashboard() {
     const { data: catData } = await supabase.from('categories').select('*').order('display_order');
     setCategories(catData || []);
     
-    // 🔥 에러 해결 핵심 1: 데이터를 불러올 때 기본 카테고리 ID를 미리 채워줍니다.
     if (catData?.length > 0) {
       setNewItem(prev => ({ ...prev, category_id: catData[0].id }));
     }
@@ -40,13 +39,12 @@ export default function Dashboard() {
     setItems(itemData || []);
   }
 
-  // 🔥 에러 해결 핵심 2: 더하기 버튼을 누를 때 폼을 깨끗하게 초기화하고 기본 카테고리를 설정합니다.
   const openAddModal = () => {
     setAddStep('choice');
     setIsModalOpen(true);
     setNewItem({
       title: '', 
-      category_id: categories.length > 0 ? categories[0].id : '', // 빈칸 방지
+      category_id: categories.length > 0 ? categories[0].id : '',
       type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: ''
     });
   };
@@ -167,7 +165,9 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#020617] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] text-gray-100 p-4 pb-24 font-sans text-center selection:bg-blue-500/30">
-      <header className="sticky top-0 bg-transparent pt-16 pb-2 z-10 flex flex-col items-center">
+      
+      {/* 🔥 헤더 디자인 수정: 반투명 배경(bg-[#020617]/85)과 블러(backdrop-blur-xl), z-index 강화 */}
+      <header className="sticky top-0 z-30 flex flex-col items-center pt-12 pb-4 bg-[#020617]/85 backdrop-blur-xl border-b border-white/5 shadow-lg">
         <h1 className="text-6xl md:text-7xl font-black mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)]">The Archive</h1>
         
         <div className="flex justify-center items-center gap-3 w-full px-4 overflow-x-auto no-scrollbar pb-4">
@@ -226,7 +226,6 @@ export default function Dashboard() {
         ))}
       </main>
 
-      {/* 🔥 더하기 버튼에 openAddModal 함수 연결 */}
       <button onClick={openAddModal} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
 
       {/* 인증 모달 */}

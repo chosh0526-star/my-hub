@@ -166,8 +166,8 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#020617] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] text-gray-100 p-4 pb-24 font-sans text-center selection:bg-blue-500/30">
       
-      {/* 🔥 헤더 디자인 수정: 반투명 배경(bg-[#020617]/85)과 블러(backdrop-blur-xl), z-index 강화 */}
-      <header className="sticky top-0 z-30 flex flex-col items-center pt-12 pb-4 bg-[#020617]/85 backdrop-blur-xl border-b border-white/5 shadow-lg">
+      {/* 🔥 헤더 디자인 재수정: 배경색을 10%로 대폭 낮추고(bg-black/10), 블러를 극대화(backdrop-blur-2xl)하여 네모 상자 현상 제거 */}
+      <header className="sticky top-0 z-30 flex flex-col items-center pt-16 pb-2 bg-black/10 backdrop-blur-2xl">
         <h1 className="text-6xl md:text-7xl font-black mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)]">The Archive</h1>
         
         <div className="flex justify-center items-center gap-3 w-full px-4 overflow-x-auto no-scrollbar pb-4">

@@ -30,9 +30,26 @@ export default function Dashboard() {
   async function fetchInitialData() {
     const { data: catData } = await supabase.from('categories').select('*').order('display_order');
     setCategories(catData || []);
+    
+    // 🔥 에러 해결 핵심 1: 데이터를 불러올 때 기본 카테고리 ID를 미리 채워줍니다.
+    if (catData?.length > 0) {
+      setNewItem(prev => ({ ...prev, category_id: catData[0].id }));
+    }
+
     const { data: itemData } = await supabase.from('dashboard_items').select('*').order('created_at', { ascending: false });
     setItems(itemData || []);
   }
+
+  // 🔥 에러 해결 핵심 2: 더하기 버튼을 누를 때 폼을 깨끗하게 초기화하고 기본 카테고리를 설정합니다.
+  const openAddModal = () => {
+    setAddStep('choice');
+    setIsModalOpen(true);
+    setNewItem({
+      title: '', 
+      category_id: categories.length > 0 ? categories[0].id : '', // 빈칸 방지
+      type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: ''
+    });
+  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -65,7 +82,6 @@ export default function Dashboard() {
     else { setIsDetailModalOpen(false); fetchInitialData(); }
   };
 
-  // 1. 아이템 추가 함수 강화 (에러 메시지 상세 출력)
   async function handleAddItem(e) {
     e.preventDefault();
     const finalItem = { 
@@ -74,7 +90,7 @@ export default function Dashboard() {
       title: newItem.title || (addStep === 'photo' ? '새 사진' : addStep === 'memo' ? '새 메모' : '새 링크') 
     };
     const { error } = await supabase.from('dashboard_items').insert([finalItem]);
-    if (error) alert('저장 실패: ' + error.message); // 에러가 나면 화면에 원인을 띄워줍니다.
+    if (error) alert('저장 실패: ' + error.message);
     else { setIsModalOpen(false); fetchInitialData(); }
   }
 
@@ -119,13 +135,11 @@ export default function Dashboard() {
     setEditingCategory(null); e.target.reset(); fetchInitialData();
   }
 
-  // 2. 이미지 업로드 함수 강화 (아이폰 확장자 문제 해결)
   async function handleImageUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
     
-    // 아이폰에서 파일 확장자가 없을 경우를 대비한 안전장치
     let fileExt = 'jpg';
     if (file.name && file.name.includes('.')) {
       fileExt = file.name.split('.').pop();
@@ -135,7 +149,7 @@ export default function Dashboard() {
     
     let { error } = await supabase.storage.from('images').upload(filePath, file);
     if (error) {
-      alert('업로드 실패: ' + error.message); // 스토리지 에러 원인을 띄워줍니다.
+      alert('업로드 실패: ' + error.message);
     } else {
       const { data } = supabase.storage.from('images').getPublicUrl(filePath);
       if (isDetailModalOpen) setEditingItem({ ...editingItem, image_url: data.publicUrl });
@@ -212,7 +226,8 @@ export default function Dashboard() {
         ))}
       </main>
 
-      <button onClick={() => { setAddStep('choice'); setIsModalOpen(true); }} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
+      {/* 🔥 더하기 버튼에 openAddModal 함수 연결 */}
+      <button onClick={openAddModal} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
 
       {/* 인증 모달 */}
       {authModal.open && (

@@ -166,12 +166,12 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#020617] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] text-gray-100 p-4 pb-24 font-sans text-center selection:bg-blue-500/30">
       
-      {/* 반투명 블러 헤더 */}
-      <header className="sticky top-0 z-30 flex flex-col items-center pt-16 pb-2 bg-black/10 backdrop-blur-2xl">
+      {/* 🔥 헤더 개선: 하단 테두리(border-b)와 부드러운 그림자(shadow-2xl) 추가로 블러 경계선을 자연스럽게 처리 */}
+      <header className="sticky top-0 z-30 flex flex-col items-center pt-16 pb-4 bg-[#020617]/60 backdrop-blur-2xl border-b border-white/5 shadow-2xl">
         <h1 className="text-6xl md:text-7xl font-black mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)]">The Archive</h1>
         
-        {/* 아담해진 카테고리 버튼 영역 (50% 축소) */}
-        <div className="flex justify-center items-center gap-2 w-full px-4 overflow-x-auto no-scrollbar pb-4">
+        {/* 🔥 발광 잘림 개선: 하단 패딩(pb-6)을 넉넉히 주어 빛이 퍼질 공간 확보 후, 음수 마진(-mb-4)으로 전체 간격 유지 */}
+        <div className="flex justify-center items-center gap-2 w-full px-4 overflow-x-auto no-scrollbar pb-6 -mb-4">
           <div className="flex gap-2 shrink-0">
             <button onClick={() => setFilter('전체')} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>전체</button>
             <button onClick={() => setFilter('★즐겨찾기')} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '★즐겨찾기' ? 'bg-yellow-400 text-black font-bold shadow-[0_0_15px_rgba(250,204,21,0.4)] scale-105' : 'bg-white/5 text-yellow-500 backdrop-blur-lg border border-yellow-500/20 hover:bg-yellow-400/20'}`}>★ 즐겨찾기</button>
@@ -184,8 +184,7 @@ export default function Dashboard() {
           <button onClick={() => setIsCategoryModalOpen(true)} className="p-1.5 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all backdrop-blur-lg shrink-0"><Settings size={16} /></button>
         </div>
 
-        {/* 복구된 검색창 영역 */}
-        <div className="w-full max-w-md px-4 mt-2">
+        <div className="w-full max-w-md px-4 mt-4">
           <div className="relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-white transition-colors" size={18} />
             <input type="text" placeholder="제목이나 메모를 검색하세요" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:bg-white/10 focus:border-white/20 outline-none transition-all backdrop-blur-xl placeholder:text-gray-600" />

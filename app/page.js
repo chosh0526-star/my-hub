@@ -21,6 +21,9 @@ export default function Dashboard() {
   const [authModal, setAuthModal] = useState({ open: false, type: '', target: null });
   const [authInput, setAuthInput] = useState('');
 
+  // 🔥 이스터에그용 터치 카운터 상태
+  const [clickCount, setClickCount] = useState(0);
+
   const [newItem, setNewItem] = useState({
     title: '', category_id: '', type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: ''
   });
@@ -38,6 +41,21 @@ export default function Dashboard() {
     const { data: itemData } = await supabase.from('dashboard_items').select('*').order('created_at', { ascending: false });
     setItems(itemData || []);
   }
+
+  // 🔥 이스터에그 발동 함수: 제목을 5번 누르면 '비밀창고' 호출
+  const handleTitleClick = () => {
+    if (clickCount >= 4) {
+      const secretCat = categories.find(c => c.name === '비밀창고');
+      if (secretCat) {
+        handleCategoryClick(secretCat); // 비밀 카테고리 클릭한 것과 동일한 효과
+      } else {
+        alert("쉿! 설정(⚙️)에서 이름이 '비밀창고'인 비밀 카테고리를 먼저 만들어주세요.");
+      }
+      setClickCount(0); // 초기화
+    } else {
+      setClickCount(clickCount + 1);
+    }
+  };
 
   const openAddModal = () => {
     setAddStep('choice');
@@ -167,13 +185,18 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#020617] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] text-gray-100 pb-24 font-sans text-center selection:bg-blue-500/30">
       
       <header className="sticky top-0 z-30 flex flex-col items-center pt-14 pb-4 bg-[#020617]/60 backdrop-blur-2xl border-b border-white/5 shadow-2xl w-full">
-        <h1 className="text-6xl md:text-7xl font-black mb-2 px-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)]">The Archive</h1>
+        {/* 🔥 로고에 터치 이벤트(handleTitleClick) 연결 및 드래그 방지(select-none) 적용 */}
+        <h1 onClick={handleTitleClick} className="text-6xl md:text-7xl font-black mb-2 px-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)] cursor-pointer select-none active:scale-95 transition-transform">
+          The Archive
+        </h1>
         
         <div className="flex justify-center items-center gap-2 w-full px-4 overflow-x-auto no-scrollbar pt-4 pb-6 -mb-4">
           <div className="flex gap-2 shrink-0">
             <button onClick={() => setFilter('전체')} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>전체</button>
             <button onClick={() => setFilter('★즐겨찾기')} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '★즐겨찾기' ? 'bg-yellow-400 text-black font-bold shadow-[0_0_15px_rgba(250,204,21,0.4)] scale-105' : 'bg-white/5 text-yellow-500 backdrop-blur-lg border border-yellow-500/20 hover:bg-yellow-400/20'}`}>★ 즐겨찾기</button>
-            {categories.map(cat => (
+            
+            {/* 🔥 '비밀창고'라는 이름의 카테고리는 메뉴바에서 아예 숨김 처리 */}
+            {categories.filter(cat => cat.name !== '비밀창고').map(cat => (
               <button key={cat.id} onClick={() => handleCategoryClick(cat)} className={`px-4 py-1.5 text-sm rounded-full transition-all flex items-center gap-1.5 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>
                 {cat.icon} {cat.name} {cat.is_private && <Lock size={12} />}
               </button>
@@ -197,7 +220,12 @@ export default function Dashboard() {
           const lowerSearch = searchTerm.toLowerCase();
           const matchesSearch = item.title?.toLowerCase().includes(lowerSearch) || item.content?.toLowerCase().includes(lowerSearch);
           if (filter === '★즐겨찾기') return item.is_favorite && matchesSearch;
-          const matchesCategory = filter === '전체' ? !itemCat?.is_private : itemCat?.name === filter;
+          
+          // 🔥 비밀창고 필터가 활성화된 경우 해당 아이템만 보여줌
+          if (filter === '비밀창고') return itemCat?.name === '비밀창고' && matchesSearch;
+          
+          // 전체 모드일 때는 '비밀창고' 아이템이 보이지 않도록 필터링
+          const matchesCategory = filter === '전체' ? (!itemCat?.is_private && itemCat?.name !== '비밀창고') : itemCat?.name === filter;
           return matchesCategory && matchesSearch;
         }).map(item => (
           <div key={item.id} onClick={() => openDetail(item)} className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl relative group cursor-pointer hover:border-white/20 transition-all">

@@ -141,7 +141,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#000000] via-[#0f1117] to-[#1a1c24] text-gray-100 p-4 pb-24 font-sans text-center">
+    <div className="min-h-screen bg-[#020617] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] text-gray-100 p-4 pb-24 font-sans text-center selection:bg-blue-500/30">
       <header className="sticky top-0 bg-transparent pt-16 pb-2 z-10 flex flex-col items-center">
         <h1 className="text-6xl md:text-7xl font-black mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)]">The Archive</h1>
         

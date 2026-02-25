@@ -22,6 +22,9 @@ export default function Dashboard() {
   const [authInput, setAuthInput] = useState('');
 
   const [clickCount, setClickCount] = useState(0);
+  
+  // 🔥 이미지 원본 보기 모달용 상태 추가
+  const [zoomedImage, setZoomedImage] = useState(null);
 
   const [newItem, setNewItem] = useState({
     title: '', category_id: '', type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: ''
@@ -142,8 +145,6 @@ export default function Dashboard() {
     const name = formData.get('name');
     const icon = formData.get('icon') || '📁';
     const is_private = formData.get('is_private') === 'on';
-    
-    // 🔥 키워드 세탁: 'password' 대신 'secret_key'라는 이름을 사용해서 사파리를 속입니다.
     const password = formData.get('secret_key');
 
     if (editingCategory) await supabase.from('categories').update({ name, icon, is_private, password }).eq('id', editingCategory.id);
@@ -238,7 +239,19 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {item.image_url && <img src={item.image_url} className="w-full h-48 object-cover rounded-2xl mb-4 border border-gray-800" alt="uploaded" />}
+            {/* 🔥 이미지 클릭 시 원본 보기 기능 추가 (e.stopPropagation()으로 카드 클릭 이벤트 방지) */}
+            {item.image_url && (
+              <img 
+                src={item.image_url} 
+                className="w-full h-48 object-cover rounded-2xl mb-4 border border-gray-800 cursor-zoom-in hover:opacity-90 transition-opacity" 
+                alt="uploaded" 
+                onClick={(e) => {
+                  e.stopPropagation(); 
+                  setZoomedImage(item.image_url);
+                }}
+              />
+            )}
+            
             <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
               {item.title} 
               {item.url && <a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()}><ExternalLink size={16} className="text-gray-500 hover:text-white" /></a>}
@@ -251,7 +264,7 @@ export default function Dashboard() {
 
       <button onClick={openAddModal} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
 
-      {/* 🔥 인증 모달: placeholder를 점(••••)으로 바꾸고 one-time-code를 주어 사파리를 완벽히 속임 */}
+      {/* 인증 모달 */}
       {authModal.open && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
@@ -325,7 +338,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 🔥 카테고리 관리 모달: name="password"를 name="secret_key"로 바꾸고 placeholder 변경 */}
+      {/* 카테고리 관리 모달 */}
       {isCategoryModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[60] flex items-center justify-center p-4 text-left">
           <div className="bg-gray-900 w-full max-w-md rounded-3xl p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]">
@@ -366,6 +379,29 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* 🔥 이미지 원본 보기 팝업 모달 */}
+      {zoomedImage && (
+        <div 
+          className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[120] flex items-center justify-center p-4 cursor-zoom-out"
+          onClick={() => setZoomedImage(null)}
+        >
+          <div className="relative max-w-5xl w-full flex justify-center">
+            <button 
+              onClick={() => setZoomedImage(null)} 
+              className="absolute -top-14 right-0 text-white bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors"
+            >
+              <X size={24} />
+            </button>
+            <img 
+              src={zoomedImage} 
+              alt="zoomed" 
+              className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl" 
+            />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

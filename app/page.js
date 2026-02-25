@@ -117,7 +117,7 @@ export default function Dashboard() {
         fetchInitialData();
       }
       setAuthModal({ open: false, type: '', target: null });
-    } else alert("비밀번호가 일치하지 않습니다.");
+    } else alert("인증에 실패했습니다.");
   };
 
   const handleCategoryClick = (cat) => {
@@ -142,7 +142,9 @@ export default function Dashboard() {
     const name = formData.get('name');
     const icon = formData.get('icon') || '📁';
     const is_private = formData.get('is_private') === 'on';
-    const password = formData.get('password');
+    
+    // 🔥 키워드 세탁: 'password' 대신 'secret_key'라는 이름을 사용해서 사파리를 속입니다.
+    const password = formData.get('secret_key');
 
     if (editingCategory) await supabase.from('categories').update({ name, icon, is_private, password }).eq('id', editingCategory.id);
     else await supabase.from('categories').insert([{ name, icon, is_private, password, display_order: categories.length + 1 }]);
@@ -249,21 +251,21 @@ export default function Dashboard() {
 
       <button onClick={openAddModal} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
 
-      {/* 🔥 인증 모달 개선: type="text"와 CSS 마법([-webkit-text-security:disc])으로 아이폰 팝업 완벽 차단 */}
+      {/* 🔥 인증 모달: placeholder를 점(••••)으로 바꾸고 one-time-code를 주어 사파리를 완벽히 속임 */}
       {authModal.open && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
             <ShieldCheck className="text-blue-400 mx-auto mb-6" size={32} />
             <h2 className="text-2xl font-bold mb-2">{authModal.target.icon} {authModal.target.name}</h2>
-            <form onSubmit={handleAuthConfirm} className="space-y-4" autoComplete="off">
+            <form onSubmit={handleAuthConfirm} className="space-y-4">
               <input 
                 autoFocus 
                 type="text" 
-                autoComplete="off" 
+                autoComplete="one-time-code" 
                 autoCapitalize="none" 
                 autoCorrect="off" 
                 spellCheck="false" 
-                placeholder="Password" 
+                placeholder="••••" 
                 className="w-full bg-black border border-gray-800 rounded-2xl p-4 text-center text-xl tracking-[0.5em] outline-none text-white [-webkit-text-security:disc]" 
                 value={authInput} 
                 onChange={(e) => setAuthInput(e.target.value)} 
@@ -286,7 +288,7 @@ export default function Dashboard() {
                 <button onClick={() => setAddStep('memo')} className="flex items-center gap-4 p-6 bg-white/5 border border-white/5 rounded-3xl hover:bg-white/10 transition-all text-left group"><div className="w-12 h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform"><FileText size={24} /></div><div><div className="font-bold text-lg">심플 메모</div><div className="text-sm text-gray-500">텍스트 중심의 간단한 기록</div></div></button>
               </div>
             ) : (
-              <form onSubmit={handleAddItem} className="space-y-4 text-left" autoComplete="off">
+              <form onSubmit={handleAddItem} className="space-y-4 text-left">
                 <button type="button" onClick={() => setAddStep('choice')} className="text-sm text-gray-500 hover:text-white mb-2">← 뒤로가기</button>
                 <select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.category_id} onChange={e => setNewItem({...newItem, category_id: e.target.value})}>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                 <input required placeholder="제목을 입력하세요" className="w-full bg-black border border-gray-800 rounded-xl p-4 text-lg font-bold text-white" value={newItem.title} onChange={e => setNewItem({...newItem, title: e.target.value})} />
@@ -308,7 +310,7 @@ export default function Dashboard() {
               <div><div className="flex items-center gap-2 text-gray-500 text-xs mb-1"><Calendar size={12} /> <span>{formatDate(editingItem.created_at)}</span></div><h2 className="text-2xl font-bold">정보 수정</h2></div>
               <button onClick={() => setIsDetailModalOpen(false)}><X size={24} /></button>
             </div>
-            <form onSubmit={handleUpdateItem} className="space-y-4" autoComplete="off">
+            <form onSubmit={handleUpdateItem} className="space-y-4">
               <div className="space-y-1"><label className="text-xs text-gray-500 ml-1">카테고리</label><select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.category_id} onChange={e => setEditingItem({...editingItem, category_id: e.target.value})}>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
               <div className="space-y-1"><label className="text-xs text-gray-500 ml-1">제목</label><input required className="w-full bg-black border border-gray-800 rounded-xl p-3 font-bold text-white" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} /></div>
               {editingItem.image_url && (
@@ -323,12 +325,12 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 🔥 카테고리 관리 모달 개선: type="text"와 CSS 마법으로 카테고리 생성 시에도 팝업 차단 */}
+      {/* 🔥 카테고리 관리 모달: name="password"를 name="secret_key"로 바꾸고 placeholder 변경 */}
       {isCategoryModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[60] flex items-center justify-center p-4 text-left">
           <div className="bg-gray-900 w-full max-w-md rounded-3xl p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-bold">카테고리 관리</h2><button onClick={() => {setIsCategoryModalOpen(false); setEditingCategory(null);}}><X size={24} /></button></div>
-            <form onSubmit={handleSaveCategory} className="mb-8 space-y-4" autoComplete="off">
+            <form onSubmit={handleSaveCategory} className="mb-8 space-y-4">
               <div className="flex gap-2">
                 <input name="icon" defaultValue={editingCategory?.icon} placeholder="📁" className="w-20 bg-black border border-gray-800 rounded-xl p-3 text-center text-white" />
                 <input name="name" required defaultValue={editingCategory?.name} placeholder="카테고리 이름" className="flex-1 bg-black border border-gray-800 rounded-xl p-3 text-white" />
@@ -340,14 +342,14 @@ export default function Dashboard() {
                   <span className="text-sm font-medium text-gray-300">비밀 카테고리</span>
                 </label>
                 <input 
-                  name="password" 
+                  name="secret_key" 
                   type="text" 
-                  autoComplete="off" 
+                  autoComplete="one-time-code" 
                   autoCapitalize="none" 
                   autoCorrect="off" 
                   spellCheck="false" 
                   defaultValue={editingCategory?.password} 
-                  placeholder="비밀번호" 
+                  placeholder="PIN 입력 (팝업방지)" 
                   className="w-full bg-black border border-gray-800 rounded-xl p-2.5 text-sm text-white [-webkit-text-security:disc]" 
                 />
               </div>

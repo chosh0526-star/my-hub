@@ -164,14 +164,12 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#020617] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] text-gray-100 p-4 pb-24 font-sans text-center selection:bg-blue-500/30">
+    <div className="min-h-screen bg-[#020617] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] text-gray-100 pb-24 font-sans text-center selection:bg-blue-500/30">
       
-      {/* 🔥 헤더 개선: 하단 테두리(border-b)와 부드러운 그림자(shadow-2xl) 추가로 블러 경계선을 자연스럽게 처리 */}
-      <header className="sticky top-0 z-30 flex flex-col items-center pt-16 pb-4 bg-[#020617]/60 backdrop-blur-2xl border-b border-white/5 shadow-2xl">
-        <h1 className="text-6xl md:text-7xl font-black mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)]">The Archive</h1>
+      <header className="sticky top-0 z-30 flex flex-col items-center pt-14 pb-4 bg-[#020617]/60 backdrop-blur-2xl border-b border-white/5 shadow-2xl w-full">
+        <h1 className="text-6xl md:text-7xl font-black mb-2 px-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)]">The Archive</h1>
         
-        {/* 🔥 발광 잘림 개선: 하단 패딩(pb-6)을 넉넉히 주어 빛이 퍼질 공간 확보 후, 음수 마진(-mb-4)으로 전체 간격 유지 */}
-        <div className="flex justify-center items-center gap-2 w-full px-4 overflow-x-auto no-scrollbar pb-6 -mb-4">
+        <div className="flex justify-center items-center gap-2 w-full px-4 overflow-x-auto no-scrollbar pt-4 pb-6 -mb-4">
           <div className="flex gap-2 shrink-0">
             <button onClick={() => setFilter('전체')} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>전체</button>
             <button onClick={() => setFilter('★즐겨찾기')} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '★즐겨찾기' ? 'bg-yellow-400 text-black font-bold shadow-[0_0_15px_rgba(250,204,21,0.4)] scale-105' : 'bg-white/5 text-yellow-500 backdrop-blur-lg border border-yellow-500/20 hover:bg-yellow-400/20'}`}>★ 즐겨찾기</button>
@@ -193,7 +191,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 text-left px-2">
+      <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 text-left px-4">
         {items.filter(item => {
           const itemCat = categories.find(c => c.id === item.category_id);
           const lowerSearch = searchTerm.toLowerCase();

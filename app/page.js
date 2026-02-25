@@ -21,7 +21,6 @@ export default function Dashboard() {
   const [authModal, setAuthModal] = useState({ open: false, type: '', target: null });
   const [authInput, setAuthInput] = useState('');
 
-  // 🔥 이스터에그용 터치 카운터 상태
   const [clickCount, setClickCount] = useState(0);
 
   const [newItem, setNewItem] = useState({
@@ -42,16 +41,15 @@ export default function Dashboard() {
     setItems(itemData || []);
   }
 
-  // 🔥 이스터에그 발동 함수: 제목을 5번 누르면 '비밀창고' 호출
   const handleTitleClick = () => {
     if (clickCount >= 4) {
       const secretCat = categories.find(c => c.name === '비밀창고');
       if (secretCat) {
-        handleCategoryClick(secretCat); // 비밀 카테고리 클릭한 것과 동일한 효과
+        handleCategoryClick(secretCat);
       } else {
         alert("쉿! 설정(⚙️)에서 이름이 '비밀창고'인 비밀 카테고리를 먼저 만들어주세요.");
       }
-      setClickCount(0); // 초기화
+      setClickCount(0);
     } else {
       setClickCount(clickCount + 1);
     }
@@ -185,7 +183,6 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#020617] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] text-gray-100 pb-24 font-sans text-center selection:bg-blue-500/30">
       
       <header className="sticky top-0 z-30 flex flex-col items-center pt-14 pb-4 bg-[#020617]/60 backdrop-blur-2xl border-b border-white/5 shadow-2xl w-full">
-        {/* 🔥 로고에 터치 이벤트(handleTitleClick) 연결 및 드래그 방지(select-none) 적용 */}
         <h1 onClick={handleTitleClick} className="text-6xl md:text-7xl font-black mb-2 px-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)] cursor-pointer select-none active:scale-95 transition-transform">
           The Archive
         </h1>
@@ -195,7 +192,6 @@ export default function Dashboard() {
             <button onClick={() => setFilter('전체')} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>전체</button>
             <button onClick={() => setFilter('★즐겨찾기')} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '★즐겨찾기' ? 'bg-yellow-400 text-black font-bold shadow-[0_0_15px_rgba(250,204,21,0.4)] scale-105' : 'bg-white/5 text-yellow-500 backdrop-blur-lg border border-yellow-500/20 hover:bg-yellow-400/20'}`}>★ 즐겨찾기</button>
             
-            {/* 🔥 '비밀창고'라는 이름의 카테고리는 메뉴바에서 아예 숨김 처리 */}
             {categories.filter(cat => cat.name !== '비밀창고').map(cat => (
               <button key={cat.id} onClick={() => handleCategoryClick(cat)} className={`px-4 py-1.5 text-sm rounded-full transition-all flex items-center gap-1.5 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>
                 {cat.icon} {cat.name} {cat.is_private && <Lock size={12} />}
@@ -221,10 +217,8 @@ export default function Dashboard() {
           const matchesSearch = item.title?.toLowerCase().includes(lowerSearch) || item.content?.toLowerCase().includes(lowerSearch);
           if (filter === '★즐겨찾기') return item.is_favorite && matchesSearch;
           
-          // 🔥 비밀창고 필터가 활성화된 경우 해당 아이템만 보여줌
           if (filter === '비밀창고') return itemCat?.name === '비밀창고' && matchesSearch;
           
-          // 전체 모드일 때는 '비밀창고' 아이템이 보이지 않도록 필터링
           const matchesCategory = filter === '전체' ? (!itemCat?.is_private && itemCat?.name !== '비밀창고') : itemCat?.name === filter;
           return matchesCategory && matchesSearch;
         }).map(item => (
@@ -255,14 +249,25 @@ export default function Dashboard() {
 
       <button onClick={openAddModal} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
 
-      {/* 인증 모달 */}
+      {/* 🔥 인증 모달 개선: type="text"와 CSS 마법([-webkit-text-security:disc])으로 아이폰 팝업 완벽 차단 */}
       {authModal.open && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
             <ShieldCheck className="text-blue-400 mx-auto mb-6" size={32} />
             <h2 className="text-2xl font-bold mb-2">{authModal.target.icon} {authModal.target.name}</h2>
-            <form onSubmit={handleAuthConfirm} className="space-y-4">
-              <input autoFocus type="password" placeholder="Password" className="w-full bg-black border border-gray-800 rounded-2xl p-4 text-center text-xl tracking-[0.5em] outline-none text-white" value={authInput} onChange={(e) => setAuthInput(e.target.value)} />
+            <form onSubmit={handleAuthConfirm} className="space-y-4" autoComplete="off">
+              <input 
+                autoFocus 
+                type="text" 
+                autoComplete="off" 
+                autoCapitalize="none" 
+                autoCorrect="off" 
+                spellCheck="false" 
+                placeholder="Password" 
+                className="w-full bg-black border border-gray-800 rounded-2xl p-4 text-center text-xl tracking-[0.5em] outline-none text-white [-webkit-text-security:disc]" 
+                value={authInput} 
+                onChange={(e) => setAuthInput(e.target.value)} 
+              />
               <div className="flex gap-3 pt-2"><button type="button" onClick={() => setAuthModal({ open: false, type: '', target: null })} className="flex-1 bg-gray-800 text-gray-300 font-bold p-4 rounded-2xl">취소</button><button type="submit" className="flex-1 bg-white text-black font-bold p-4 rounded-2xl">확인</button></div>
             </form>
           </div>
@@ -281,7 +286,7 @@ export default function Dashboard() {
                 <button onClick={() => setAddStep('memo')} className="flex items-center gap-4 p-6 bg-white/5 border border-white/5 rounded-3xl hover:bg-white/10 transition-all text-left group"><div className="w-12 h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform"><FileText size={24} /></div><div><div className="font-bold text-lg">심플 메모</div><div className="text-sm text-gray-500">텍스트 중심의 간단한 기록</div></div></button>
               </div>
             ) : (
-              <form onSubmit={handleAddItem} className="space-y-4 text-left">
+              <form onSubmit={handleAddItem} className="space-y-4 text-left" autoComplete="off">
                 <button type="button" onClick={() => setAddStep('choice')} className="text-sm text-gray-500 hover:text-white mb-2">← 뒤로가기</button>
                 <select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.category_id} onChange={e => setNewItem({...newItem, category_id: e.target.value})}>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                 <input required placeholder="제목을 입력하세요" className="w-full bg-black border border-gray-800 rounded-xl p-4 text-lg font-bold text-white" value={newItem.title} onChange={e => setNewItem({...newItem, title: e.target.value})} />
@@ -303,7 +308,7 @@ export default function Dashboard() {
               <div><div className="flex items-center gap-2 text-gray-500 text-xs mb-1"><Calendar size={12} /> <span>{formatDate(editingItem.created_at)}</span></div><h2 className="text-2xl font-bold">정보 수정</h2></div>
               <button onClick={() => setIsDetailModalOpen(false)}><X size={24} /></button>
             </div>
-            <form onSubmit={handleUpdateItem} className="space-y-4">
+            <form onSubmit={handleUpdateItem} className="space-y-4" autoComplete="off">
               <div className="space-y-1"><label className="text-xs text-gray-500 ml-1">카테고리</label><select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.category_id} onChange={e => setEditingItem({...editingItem, category_id: e.target.value})}>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
               <div className="space-y-1"><label className="text-xs text-gray-500 ml-1">제목</label><input required className="w-full bg-black border border-gray-800 rounded-xl p-3 font-bold text-white" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} /></div>
               {editingItem.image_url && (
@@ -318,18 +323,34 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 카테고리 관리 모달 */}
+      {/* 🔥 카테고리 관리 모달 개선: type="text"와 CSS 마법으로 카테고리 생성 시에도 팝업 차단 */}
       {isCategoryModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[60] flex items-center justify-center p-4 text-left">
           <div className="bg-gray-900 w-full max-w-md rounded-3xl p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-bold">카테고리 관리</h2><button onClick={() => {setIsCategoryModalOpen(false); setEditingCategory(null);}}><X size={24} /></button></div>
-            <form onSubmit={handleSaveCategory} className="mb-8 space-y-4">
+            <form onSubmit={handleSaveCategory} className="mb-8 space-y-4" autoComplete="off">
               <div className="flex gap-2">
                 <input name="icon" defaultValue={editingCategory?.icon} placeholder="📁" className="w-20 bg-black border border-gray-800 rounded-xl p-3 text-center text-white" />
                 <input name="name" required defaultValue={editingCategory?.name} placeholder="카테고리 이름" className="flex-1 bg-black border border-gray-800 rounded-xl p-3 text-white" />
               </div>
               <p className="text-[10px] text-gray-500 -mt-2 ml-1">* 이모지를 비워두면 기본 아이콘(📁)으로 설정됩니다.</p>
-              <div className="p-4 bg-black/50 rounded-2xl border border-gray-800 space-y-3"><label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="is_private" defaultChecked={editingCategory?.is_private} className="w-5 h-5 rounded bg-black text-white" /><span className="text-sm font-medium text-gray-300">비밀 카테고리</span></label><input name="password" type="password" defaultValue={editingCategory?.password} placeholder="비밀번호" className="w-full bg-black border border-gray-800 rounded-xl p-2.5 text-sm text-white" /></div>
+              <div className="p-4 bg-black/50 rounded-2xl border border-gray-800 space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" name="is_private" defaultChecked={editingCategory?.is_private} className="w-5 h-5 rounded bg-black text-white" />
+                  <span className="text-sm font-medium text-gray-300">비밀 카테고리</span>
+                </label>
+                <input 
+                  name="password" 
+                  type="text" 
+                  autoComplete="off" 
+                  autoCapitalize="none" 
+                  autoCorrect="off" 
+                  spellCheck="false" 
+                  defaultValue={editingCategory?.password} 
+                  placeholder="비밀번호" 
+                  className="w-full bg-black border border-gray-800 rounded-xl p-2.5 text-sm text-white [-webkit-text-security:disc]" 
+                />
+              </div>
               <button type="submit" className="w-full bg-white text-black font-bold p-3 rounded-xl">저장</button>
             </form>
             <div className="space-y-3 max-h-60 overflow-y-auto pr-2">

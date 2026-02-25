@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Clock, Calendar, Search, Star } from 'lucide-react';
+import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Calendar, Search, Star } from 'lucide-react';
 
 export default function Dashboard() {
   const [items, setItems] = useState([]);
@@ -65,6 +65,7 @@ export default function Dashboard() {
     else { setIsDetailModalOpen(false); fetchInitialData(); }
   };
 
+  // 1. 아이템 추가 함수 강화 (에러 메시지 상세 출력)
   async function handleAddItem(e) {
     e.preventDefault();
     const finalItem = { 
@@ -73,7 +74,7 @@ export default function Dashboard() {
       title: newItem.title || (addStep === 'photo' ? '새 사진' : addStep === 'memo' ? '새 메모' : '새 링크') 
     };
     const { error } = await supabase.from('dashboard_items').insert([finalItem]);
-    if (error) alert('저장 실패!');
+    if (error) alert('저장 실패: ' + error.message); // 에러가 나면 화면에 원인을 띄워줍니다.
     else { setIsModalOpen(false); fetchInitialData(); }
   }
 
@@ -118,14 +119,24 @@ export default function Dashboard() {
     setEditingCategory(null); e.target.reset(); fetchInitialData();
   }
 
+  // 2. 이미지 업로드 함수 강화 (아이폰 확장자 문제 해결)
   async function handleImageUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
-    const fileName = `${Math.random()}.${file.name.split('.').pop()}`;
+    
+    // 아이폰에서 파일 확장자가 없을 경우를 대비한 안전장치
+    let fileExt = 'jpg';
+    if (file.name && file.name.includes('.')) {
+      fileExt = file.name.split('.').pop();
+    }
+    const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `uploads/${fileName}`;
+    
     let { error } = await supabase.storage.from('images').upload(filePath, file);
-    if (!error) {
+    if (error) {
+      alert('업로드 실패: ' + error.message); // 스토리지 에러 원인을 띄워줍니다.
+    } else {
       const { data } = supabase.storage.from('images').getPublicUrl(filePath);
       if (isDetailModalOpen) setEditingItem({ ...editingItem, image_url: data.publicUrl });
       else setNewItem({ ...newItem, image_url: data.publicUrl, type: 'image' });
@@ -177,12 +188,10 @@ export default function Dashboard() {
           return matchesCategory && matchesSearch;
         }).map(item => (
           <div key={item.id} onClick={() => openDetail(item)} className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl relative group cursor-pointer hover:border-white/20 transition-all">
-            {/* 별표 버튼: 상단 우측 여백 확보 */}
             <button onClick={(e) => toggleFavorite(e, item)} className="absolute top-5 right-5 text-gray-600 hover:text-yellow-400 transition-colors z-10">
               <Star size={22} fill={item.is_favorite ? "currentColor" : "none"} className={item.is_favorite ? "text-yellow-400" : ""} />
             </button>
             
-            {/* 헤더 영역: 카테고리와 날짜를 나란히 배치 */}
             <div className="mb-4 flex items-center gap-2">
               <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">
                 {categories.find(c => c.id === item.category_id)?.name}
@@ -203,7 +212,6 @@ export default function Dashboard() {
         ))}
       </main>
 
-      {/* 나머지 모달 코드는 동일하게 유지 */}
       <button onClick={() => { setAddStep('choice'); setIsModalOpen(true); }} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
 
       {/* 인증 모달 */}
@@ -263,7 +271,7 @@ export default function Dashboard() {
               <div className="space-y-1"><label className="text-xs text-gray-500 ml-1">사이트 주소 (URL)</label><input placeholder="naver.com" className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.url || ''} onChange={e => setEditingItem({...editingItem, url: e.target.value})} /></div>
               <div className="grid grid-cols-2 gap-2"><div className="space-y-1"><label className="text-xs text-gray-500 ml-1">ID</label><input className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.login_id || ''} onChange={e => setEditingItem({...editingItem, login_id: e.target.value})} /></div><div className="space-y-1"><label className="text-xs text-gray-500 ml-1">PW</label><input className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.login_pw || ''} onChange={e => setEditingItem({...editingItem, login_pw: e.target.value})} /></div></div>
               <div className="space-y-1"><label className="text-xs text-gray-500 ml-1">메모</label><textarea className="w-full bg-black border border-gray-800 rounded-xl p-3 h-32 text-sm leading-relaxed text-white" value={editingItem.content || ''} onChange={e => setEditingItem({...editingItem, content: e.target.value})} /></div>
-              <div className="flex gap-2 pt-4"><button type="button" onClick={() => { if(confirm('삭제하시겠습니까?')) { supabase.from('dashboard_items').delete().eq('id', editingItem.id).then(() => { setIsDetailModalOpen(false); fetchInitialData(); }); } }} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500/20 transition-all"><Trash2 size={20} /></button><button type="submit" className="flex-1 bg-white text-black font-extrabold p-4 rounded-2xl active:scale-95 transition-all">저장하기</button></div>
+              <div className="flex gap-2 pt-4"><button type="button" onClick={() => handleDelete(editingItem.id)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500/20 transition-all"><Trash2 size={20} /></button><button type="submit" className="flex-1 bg-white text-black font-extrabold p-4 rounded-2xl active:scale-95 transition-all">저장하기</button></div>
             </form>
           </div>
         </div>

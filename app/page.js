@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-// 🔥 ChevronUp, ChevronDown 아이콘이 추가되었습니다.
 import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Calendar, Search, Star, ChevronUp, ChevronDown } from 'lucide-react';
 
 export default function Dashboard() {
@@ -114,16 +113,22 @@ export default function Dashboard() {
     else { setIsModalOpen(false); fetchInitialData(); }
   }
 
+  // 🔥 핵심 보안 패치: 수정(edit) 타입일 경우에도 암호 검증을 통과해야만 에디터 모드를 켜줍니다.
   const handleAuthConfirm = async (e) => {
     e.preventDefault();
     if (authInput === authModal.target.password) {
-      if (authModal.type === 'view') setFilter(authModal.target.name);
-      else if (authModal.type === 'delete') {
+      if (authModal.type === 'view') {
+        setFilter(authModal.target.name);
+      } else if (authModal.type === 'delete') {
         await supabase.from('categories').delete().eq('id', authModal.target.id);
         fetchInitialData();
+      } else if (authModal.type === 'edit') {
+        setEditingCategory(authModal.target);
       }
       setAuthModal({ open: false, type: '', target: null });
-    } else alert("인증에 실패했습니다.");
+    } else {
+      alert("인증에 실패했습니다.");
+    }
   };
 
   const handleCategoryClick = (cat) => {
@@ -142,6 +147,16 @@ export default function Dashboard() {
     }
   }
 
+  // 🔥 수정 로직: 카테고리 수정 버튼 클릭 시 비밀 여부에 따라 처리
+  const handleEditCategory = (cat) => {
+    if (cat.is_private) {
+      setAuthModal({ open: true, type: 'edit', target: cat });
+      setAuthInput('');
+    } else {
+      setEditingCategory(cat);
+    }
+  };
+
   async function handleSaveCategory(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -155,20 +170,16 @@ export default function Dashboard() {
     setEditingCategory(null); e.target.reset(); fetchInitialData();
   }
 
-  // 🔥 핵심 기능: 카테고리 순서 위/아래 이동 함수
   async function moveCategory(index, direction) {
     if (index + direction < 0 || index + direction >= categories.length) return;
     
-    // 배열 순서 바꾸기
     const newCategories = [...categories];
     const temp = newCategories[index];
     newCategories[index] = newCategories[index + direction];
     newCategories[index + direction] = temp;
     
-    // 화면에 먼저 반영 (빠릿한 느낌을 위해)
     setCategories(newCategories);
 
-    // 데이터베이스에 새로운 순서(1, 2, 3...) 일괄 업데이트
     await Promise.all(
       newCategories.map((cat, i) => 
         supabase.from('categories').update({ display_order: i + 1 }).eq('id', cat.id)
@@ -392,7 +403,6 @@ export default function Dashboard() {
               <button type="submit" className="w-full bg-white text-black font-bold p-3 rounded-xl">저장</button>
             </form>
             <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-              {/* 🔥 순서 변경 화살표 버튼 추가됨 */}
               {categories.map((cat, index) => (
                 <div key={cat.id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
                   <span className="text-lg flex items-center gap-2">{cat.icon} {cat.name} {cat.is_private && <Lock size={14} className="text-gray-500" />}</span>
@@ -402,7 +412,8 @@ export default function Dashboard() {
                       <button type="button" onClick={() => moveCategory(index, 1)} disabled={index === categories.length - 1} className={`p-1 rounded hover:bg-white/10 ${index === categories.length - 1 ? 'text-gray-700' : 'text-gray-400'}`}><ChevronDown size={16}/></button>
                     </div>
                     <div className="w-[1px] h-4 bg-gray-700 mx-1"></div>
-                    <button onClick={() => setEditingCategory(cat)} className="text-gray-500 hover:text-blue-400"><Edit2 size={16} /></button>
+                    {/* 🔥 이제 수정 버튼을 누르면 바로 수정되는 게 아니라 handleEditCategory를 통해 인증을 거칩니다 */}
+                    <button onClick={() => handleEditCategory(cat)} className="text-gray-500 hover:text-blue-400"><Edit2 size={16} /></button>
                     <button onClick={() => handleDeleteCategory(cat.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={16} /></button>
                   </div>
                 </div>

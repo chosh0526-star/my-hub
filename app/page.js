@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Calendar, Search, Star } from 'lucide-react';
+// 🔥 ChevronUp, ChevronDown 아이콘이 추가되었습니다.
+import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Calendar, Search, Star, ChevronUp, ChevronDown } from 'lucide-react';
 
 export default function Dashboard() {
   const [items, setItems] = useState([]);
@@ -22,7 +23,6 @@ export default function Dashboard() {
   const [authInput, setAuthInput] = useState('');
 
   const [clickCount, setClickCount] = useState(0);
-  
   const [zoomedImage, setZoomedImage] = useState(null);
 
   const [newItem, setNewItem] = useState({
@@ -57,7 +57,6 @@ export default function Dashboard() {
     }
   };
 
-  // 🔥 핵심 수정: 현재 보고 있는 탭(filter)을 인식해서 알아서 기본값으로 세팅해 줍니다!
   const openAddModal = () => {
     setAddStep('choice');
     setIsModalOpen(true);
@@ -154,6 +153,29 @@ export default function Dashboard() {
     if (editingCategory) await supabase.from('categories').update({ name, icon, is_private, password }).eq('id', editingCategory.id);
     else await supabase.from('categories').insert([{ name, icon, is_private, password, display_order: categories.length + 1 }]);
     setEditingCategory(null); e.target.reset(); fetchInitialData();
+  }
+
+  // 🔥 핵심 기능: 카테고리 순서 위/아래 이동 함수
+  async function moveCategory(index, direction) {
+    if (index + direction < 0 || index + direction >= categories.length) return;
+    
+    // 배열 순서 바꾸기
+    const newCategories = [...categories];
+    const temp = newCategories[index];
+    newCategories[index] = newCategories[index + direction];
+    newCategories[index + direction] = temp;
+    
+    // 화면에 먼저 반영 (빠릿한 느낌을 위해)
+    setCategories(newCategories);
+
+    // 데이터베이스에 새로운 순서(1, 2, 3...) 일괄 업데이트
+    await Promise.all(
+      newCategories.map((cat, i) => 
+        supabase.from('categories').update({ display_order: i + 1 }).eq('id', cat.id)
+      )
+    );
+    
+    fetchInitialData();
   }
 
   async function handleImageUpload(e) {
@@ -304,10 +326,7 @@ export default function Dashboard() {
             ) : (
               <form onSubmit={handleAddItem} className="space-y-4 text-left">
                 <button type="button" onClick={() => setAddStep('choice')} className="text-sm text-gray-500 hover:text-white mb-2">← 뒤로가기</button>
-                
-                {/* 이 부분! 추가할 때 카테고리 확인을 도와주는 콤보박스입니다. */}
                 <select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white focus:border-white/50 outline-none transition-colors" value={newItem.category_id} onChange={e => setNewItem({...newItem, category_id: e.target.value})}>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-                
                 <input required placeholder="제목을 입력하세요" className="w-full bg-black border border-gray-800 rounded-xl p-4 text-lg font-bold text-white" value={newItem.title} onChange={e => setNewItem({...newItem, title: e.target.value})} />
                 {addStep === 'url' && ( <div className="space-y-3"><input required placeholder="naver.com" className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.url} onChange={e => setNewItem({...newItem, url: e.target.value})} /><div className="grid grid-cols-2 gap-2"><input placeholder="ID (선택)" className="bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.login_id} onChange={e => setNewItem({...newItem, login_id: e.target.value})} /><input placeholder="PW (선택)" className="bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.login_pw} onChange={e => setNewItem({...newItem, login_pw: e.target.value})} /></div></div> )}
                 {addStep === 'photo' && ( <div className="border-2 border-dashed border-gray-800 rounded-2xl p-8 text-center bg-black/30">{newItem.image_url ? ( <div className="relative inline-block"><img src={newItem.image_url} className="h-32 rounded-xl border border-white/10" /><button onClick={() => setNewItem({...newItem, image_url: ''})} className="absolute -top-3 -right-3 bg-red-500 rounded-full p-1.5"><X size={14} /></button></div> ) : ( <label className="cursor-pointer flex flex-col items-center gap-3"><ImageIcon size={24} className="text-gray-400" /><span className="text-sm text-gray-400">{uploading ? '업로드 중...' : '터치하여 사진 선택'}</span><input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} /></label> )}</div> )}
@@ -373,10 +392,19 @@ export default function Dashboard() {
               <button type="submit" className="w-full bg-white text-black font-bold p-3 rounded-xl">저장</button>
             </form>
             <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-              {categories.map(cat => (
+              {/* 🔥 순서 변경 화살표 버튼 추가됨 */}
+              {categories.map((cat, index) => (
                 <div key={cat.id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
                   <span className="text-lg flex items-center gap-2">{cat.icon} {cat.name} {cat.is_private && <Lock size={14} className="text-gray-500" />}</span>
-                  <div className="flex gap-2"><button onClick={() => setEditingCategory(cat)} className="text-gray-500 hover:text-blue-400"><Edit2 size={16} /></button><button onClick={() => handleDeleteCategory(cat.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={16} /></button></div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex gap-1 bg-black/30 rounded-lg p-1">
+                      <button type="button" onClick={() => moveCategory(index, -1)} disabled={index === 0} className={`p-1 rounded hover:bg-white/10 ${index === 0 ? 'text-gray-700' : 'text-gray-400'}`}><ChevronUp size={16}/></button>
+                      <button type="button" onClick={() => moveCategory(index, 1)} disabled={index === categories.length - 1} className={`p-1 rounded hover:bg-white/10 ${index === categories.length - 1 ? 'text-gray-700' : 'text-gray-400'}`}><ChevronDown size={16}/></button>
+                    </div>
+                    <div className="w-[1px] h-4 bg-gray-700 mx-1"></div>
+                    <button onClick={() => setEditingCategory(cat)} className="text-gray-500 hover:text-blue-400"><Edit2 size={16} /></button>
+                    <button onClick={() => handleDeleteCategory(cat.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={16} /></button>
+                  </div>
                 </div>
               ))}
             </div>

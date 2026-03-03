@@ -23,7 +23,6 @@ export default function Dashboard() {
 
   const [clickCount, setClickCount] = useState(0);
   
-  // 🔥 이미지 원본 보기 모달용 상태 추가
   const [zoomedImage, setZoomedImage] = useState(null);
 
   const [newItem, setNewItem] = useState({
@@ -58,12 +57,17 @@ export default function Dashboard() {
     }
   };
 
+  // 🔥 핵심 수정: 현재 보고 있는 탭(filter)을 인식해서 알아서 기본값으로 세팅해 줍니다!
   const openAddModal = () => {
     setAddStep('choice');
     setIsModalOpen(true);
+    
+    const currentCategory = categories.find(c => c.name === filter);
+    const defaultCategoryId = currentCategory ? currentCategory.id : (categories.length > 0 ? categories[0].id : '');
+
     setNewItem({
       title: '', 
-      category_id: categories.length > 0 ? categories[0].id : '',
+      category_id: defaultCategoryId,
       type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: ''
     });
   };
@@ -239,7 +243,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* 🔥 이미지 클릭 시 원본 보기 기능 추가 (e.stopPropagation()으로 카드 클릭 이벤트 방지) */}
             {item.image_url && (
               <img 
                 src={item.image_url} 
@@ -264,7 +267,6 @@ export default function Dashboard() {
 
       <button onClick={openAddModal} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
 
-      {/* 인증 모달 */}
       {authModal.open && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
@@ -289,7 +291,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 정보 추가 모달 */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 w-full max-w-md rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
@@ -303,7 +304,10 @@ export default function Dashboard() {
             ) : (
               <form onSubmit={handleAddItem} className="space-y-4 text-left">
                 <button type="button" onClick={() => setAddStep('choice')} className="text-sm text-gray-500 hover:text-white mb-2">← 뒤로가기</button>
-                <select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.category_id} onChange={e => setNewItem({...newItem, category_id: e.target.value})}>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                
+                {/* 이 부분! 추가할 때 카테고리 확인을 도와주는 콤보박스입니다. */}
+                <select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white focus:border-white/50 outline-none transition-colors" value={newItem.category_id} onChange={e => setNewItem({...newItem, category_id: e.target.value})}>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                
                 <input required placeholder="제목을 입력하세요" className="w-full bg-black border border-gray-800 rounded-xl p-4 text-lg font-bold text-white" value={newItem.title} onChange={e => setNewItem({...newItem, title: e.target.value})} />
                 {addStep === 'url' && ( <div className="space-y-3"><input required placeholder="naver.com" className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.url} onChange={e => setNewItem({...newItem, url: e.target.value})} /><div className="grid grid-cols-2 gap-2"><input placeholder="ID (선택)" className="bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.login_id} onChange={e => setNewItem({...newItem, login_id: e.target.value})} /><input placeholder="PW (선택)" className="bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.login_pw} onChange={e => setNewItem({...newItem, login_pw: e.target.value})} /></div></div> )}
                 {addStep === 'photo' && ( <div className="border-2 border-dashed border-gray-800 rounded-2xl p-8 text-center bg-black/30">{newItem.image_url ? ( <div className="relative inline-block"><img src={newItem.image_url} className="h-32 rounded-xl border border-white/10" /><button onClick={() => setNewItem({...newItem, image_url: ''})} className="absolute -top-3 -right-3 bg-red-500 rounded-full p-1.5"><X size={14} /></button></div> ) : ( <label className="cursor-pointer flex flex-col items-center gap-3"><ImageIcon size={24} className="text-gray-400" /><span className="text-sm text-gray-400">{uploading ? '업로드 중...' : '터치하여 사진 선택'}</span><input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} /></label> )}</div> )}
@@ -380,7 +384,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 🔥 이미지 원본 보기 팝업 모달 */}
+      {/* 이미지 원본 보기 팝업 모달 */}
       {zoomedImage && (
         <div 
           className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[120] flex items-center justify-center p-4 cursor-zoom-out"

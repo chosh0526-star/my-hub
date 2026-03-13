@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-// 🔥 폴더용 아이콘(FolderOpen, FolderPlus, ArrowLeft, Folder)이 추가되었습니다.
 import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Calendar, Search, Star, ChevronUp, ChevronDown, FolderOpen, FolderPlus, ArrowLeft, Folder } from 'lucide-react';
 
 export default function Dashboard() {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [subfolders, setSubfolders] = useState([]); // 🔥 세부 폴더 리스트 상태
+  const [subfolders, setSubfolders] = useState([]); 
   const [filter, setFilter] = useState('전체');
-  const [currentSubfolder, setCurrentSubfolder] = useState(null); // 🔥 현재 들어와 있는 폴더 상태
+  const [currentSubfolder, setCurrentSubfolder] = useState(null); 
 
   const [showPw, setShowPw] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,7 +25,6 @@ export default function Dashboard() {
   const [authModal, setAuthModal] = useState({ open: false, type: '', target: null });
   const [authInput, setAuthInput] = useState('');
 
-  // 🔥 폴더 생성 모달 상태
   const [isSubfolderModalOpen, setIsSubfolderModalOpen] = useState(false);
   const [newSubfolderName, setNewSubfolderName] = useState('');
 
@@ -43,7 +41,6 @@ export default function Dashboard() {
     const { data: catData } = await supabase.from('categories').select('*').order('display_order');
     setCategories(catData || []);
     
-    // 폴더 데이터 불러오기
     const { data: sfData } = await supabase.from('subfolders').select('*').order('created_at');
     setSubfolders(sfData || []);
 
@@ -73,7 +70,7 @@ export default function Dashboard() {
     setNewItem({
       title: '', 
       category_id: defaultCategoryId,
-      subfolder_id: null, // 🔥 새 아이템은 무조건 카테고리 메인에 던져놓기!
+      subfolder_id: null, 
       type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: ''
     });
   };
@@ -126,7 +123,7 @@ export default function Dashboard() {
     if (authInput === authModal.target.password) {
       if (authModal.type === 'view') {
         setFilter(authModal.target.name);
-        setCurrentSubfolder(null); // 방을 옮기면 서브폴더 진입 상태 해제
+        setCurrentSubfolder(null); 
       } else if (authModal.type === 'delete') {
         await supabase.from('categories').delete().eq('id', authModal.target.id);
         fetchInitialData();
@@ -138,14 +135,13 @@ export default function Dashboard() {
   };
 
   const handleCategoryClick = (cat) => {
-    setCurrentSubfolder(null); // 방을 옮기면 폴더에서 빠져나옴
+    setCurrentSubfolder(null); 
     if (cat.is_private) {
       setAuthModal({ open: true, type: 'view', target: cat });
       setAuthInput('');
     } else setFilter(cat.name);
   };
 
-  // 🔥 세부 폴더 생성 로직
   const handleCreateSubfolder = async (e) => {
     e.preventDefault();
     const activeCat = categories.find(c => c.name === filter);
@@ -160,10 +156,9 @@ export default function Dashboard() {
     }
   };
 
-  // 🔥 세부 폴더 삭제 로직
   const handleDeleteSubfolder = async (e, id) => {
     e.stopPropagation();
-    if (confirm('폴더를 삭제하시겠습니까?\n(폴더 안의 내용물은 삭제되지 않고 상위 위치로 빠져나옵니다!)')) {
+    if (confirm('폴더를 삭제하시겠습니까?\n(폴더 안의 내용물은 삭제되지 않고 카테고리 메인으로 빠져나옵니다!)')) {
       await supabase.from('subfolders').delete().eq('id', id);
       fetchInitialData();
     }
@@ -241,7 +236,6 @@ export default function Dashboard() {
     navigator.clipboard.writeText(url).then(() => alert('URL이 클립보드에 복사되었습니다! 📋')).catch(err => alert('복사에 실패했습니다.'));
   };
 
-  // 🔥 현재 화면에 띄울 정보들을 필터링하는 로직 (폴더 안쪽인지 바깥쪽인지 판별)
   const displayedItems = items.filter(item => {
     const itemCat = categories.find(c => c.id === item.category_id);
     const lowerSearch = searchTerm.toLowerCase();
@@ -251,18 +245,12 @@ export default function Dashboard() {
     
     if (filter === '전체') {
       const isVisibleCategory = !itemCat?.is_private && itemCat?.name !== '비밀창고';
-      return isVisibleCategory && matchesSearch; // 전체 모드에선 폴더 무시하고 다 보여줌
+      return isVisibleCategory && matchesSearch;
     }
 
-    // 특정 카테고리에 들어왔을 때
     if (itemCat?.name === filter) {
-      if (currentSubfolder) {
-        // 폴더 안에 들어왔을 땐 해당 폴더 소속만 보여줌
-        return item.subfolder_id === currentSubfolder.id && matchesSearch;
-      } else {
-        // 카테고리 메인일 땐 폴더에 안 들어간(null) 녀석들만 보여줌
-        return item.subfolder_id === null && matchesSearch;
-      }
+      if (currentSubfolder) return item.subfolder_id === currentSubfolder.id && matchesSearch;
+      else return item.subfolder_id === null && matchesSearch;
     }
     return false;
   });
@@ -300,7 +288,7 @@ export default function Dashboard() {
 
       <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 text-left px-4">
         
-        {/* 🔥 폴더 진입했을 때 나오는 상단 [이전으로 가기] 바 */}
+        {/* 폴더 진입했을 때 나오는 상단 [이전으로 가기] 바 */}
         {currentSubfolder && (
           <div className="col-span-1 md:col-span-2 lg:col-span-3 mb-2 flex items-center gap-4 bg-gray-900 border border-gray-800 rounded-[2rem] p-4 shadow-xl">
             <button onClick={() => setCurrentSubfolder(null)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors bg-white/5 px-4 py-3 rounded-2xl">
@@ -310,26 +298,29 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* 🔥 카테고리 메인 화면일 때 보여주는 [폴더 카드들] */}
+        {/* 🔥 옵션 B 적용: 얇은 리스트형 폴더 (Notion 스타일) */}
         {filter !== '전체' && filter !== '★즐겨찾기' && !currentSubfolder && (
-          <>
+          <div className="col-span-1 md:col-span-2 lg:col-span-3 space-y-2 mb-2">
             {subfolders.filter(sf => sf.category_id === categories.find(c => c.name === filter)?.id).map(sf => (
-              <div key={sf.id} onClick={() => setCurrentSubfolder(sf)} className="bg-gray-800 border border-gray-700 rounded-3xl p-6 shadow-xl relative group cursor-pointer hover:border-blue-500/50 hover:bg-gray-800/80 transition-all flex flex-col items-center justify-center min-h-[14rem]">
-                <button onClick={(e) => handleDeleteSubfolder(e, sf.id)} className="absolute top-5 right-5 text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
-                  <Trash2 size={20} />
+              <div 
+                key={sf.id} 
+                onClick={() => setCurrentSubfolder(sf)} 
+                className="flex items-center justify-between bg-gray-900/50 hover:bg-gray-800 border border-gray-800 rounded-2xl p-4 cursor-pointer transition-all group shadow-sm"
+              >
+                <div className="flex items-center gap-3">
+                  <Folder className="text-blue-400 w-5 h-5" />
+                  <span className="font-bold text-gray-200">{sf.name}</span>
+                </div>
+                <button 
+                  onClick={(e) => handleDeleteSubfolder(e, sf.id)} 
+                  className="text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1"
+                  title="폴더 삭제"
+                >
+                  <Trash2 size={16} />
                 </button>
-                <Folder className="text-blue-400 mb-4 w-16 h-16 drop-shadow-[0_5px_15px_rgba(59,130,246,0.3)]" />
-                <h3 className="text-xl font-bold text-white">{sf.name}</h3>
-                <span className="text-xs text-gray-500 mt-2">폴더 열기</span>
               </div>
             ))}
-            
-            {/* 새 폴더 추가 버튼 카드 */}
-            <div onClick={() => setIsSubfolderModalOpen(true)} className="bg-transparent border-2 border-dashed border-gray-800 rounded-3xl p-6 shadow-xl relative group cursor-pointer hover:border-white/30 hover:bg-white/5 transition-all flex flex-col items-center justify-center min-h-[14rem] opacity-70 hover:opacity-100">
-              <FolderPlus className="text-gray-500 mb-4 w-12 h-12 group-hover:text-gray-300 transition-colors" />
-              <h3 className="text-lg font-bold text-gray-500 group-hover:text-gray-300 transition-colors">새 폴더 만들기</h3>
-            </div>
-          </>
+          </div>
         )}
 
         {/* 📚 일반 정보 카드들 */}
@@ -343,7 +334,6 @@ export default function Dashboard() {
               <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">
                 {categories.find(c => c.id === item.category_id)?.name}
               </span>
-              {/* 폴더 안에 있지 않은데 소속된 폴더가 있다면 뱃지 표시 (전체 보기 용) */}
               {item.subfolder_id && !currentSubfolder && (
                 <span className="text-[10px] font-bold tracking-widest uppercase text-purple-400 bg-purple-400/10 px-3 py-1 rounded-full flex items-center gap-1">
                   <Folder size={10}/> {subfolders.find(s => s.id === item.subfolder_id)?.name}
@@ -371,10 +361,21 @@ export default function Dashboard() {
         ))}
       </main>
 
-      {/* 새 카드 작성 (+) 버튼 */}
+      {/* 🔥 [위치 변경됨] 새 폴더 생성 플로팅 버튼 (특정 카테고리에 있을 때만 표시) */}
+      {filter !== '전체' && filter !== '★즐겨찾기' && (
+        <button 
+          onClick={() => setIsSubfolderModalOpen(true)} 
+          className="fixed bottom-28 right-10 w-12 h-12 bg-gray-800 border border-gray-700 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-700 active:scale-95 transition-all z-20 group"
+          title="새 폴더 만들기"
+        >
+          <FolderPlus size={20} className="text-blue-400 group-hover:text-blue-300 transition-colors" />
+        </button>
+      )}
+
+      {/* 새 아이템 작성 메인 (+) 플로팅 버튼 */}
       <button onClick={openAddModal} className="fixed bottom-10 right-8 w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 z-20"><Plus size={32} /></button>
 
-      {/* 🔥 세부 폴더 생성 모달 */}
+      {/* 세부 폴더 생성 모달 */}
       {isSubfolderModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
@@ -431,7 +432,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 🔥 상세 정보 및 수정 모달 (폴더 이동 드롭다운 추가!) */}
+      {/* 상세 정보 및 수정 모달 */}
       {isDetailModalOpen && editingItem && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[80] flex items-center justify-center p-4">
           <div className="bg-gray-900 w-full max-w-md rounded-[2.5rem] p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh] text-left">
@@ -444,7 +445,6 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="text-xs text-gray-500 ml-1">상위 카테고리</label>
-                  {/* 카테고리를 바꾸면 폴더 위치가 초기화 되도록 스마트하게 처리 */}
                   <select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.category_id} onChange={e => setEditingItem({...editingItem, category_id: e.target.value, subfolder_id: null})}>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -453,7 +453,6 @@ export default function Dashboard() {
                   <label className="text-xs text-gray-500 ml-1">세부 폴더 위치</label>
                   <select className="w-full bg-black border border-blue-900/50 rounded-xl p-3 text-sm text-blue-100" value={editingItem.subfolder_id || ''} onChange={e => setEditingItem({...editingItem, subfolder_id: e.target.value === '' ? null : e.target.value})}>
                     <option value="">📁 지정 안 함 (메인)</option>
-                    {/* 선택된 카테고리에 속한 폴더들만 보여주기 */}
                     {subfolders.filter(sf => sf.category_id === editingItem.category_id).map(sf => (
                       <option key={sf.id} value={sf.id}>{sf.name}</option>
                     ))}

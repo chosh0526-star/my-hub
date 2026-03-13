@@ -113,7 +113,6 @@ export default function Dashboard() {
     else { setIsModalOpen(false); fetchInitialData(); }
   }
 
-  // 🔥 핵심 보안 패치: 수정(edit) 타입일 경우에도 암호 검증을 통과해야만 에디터 모드를 켜줍니다.
   const handleAuthConfirm = async (e) => {
     e.preventDefault();
     if (authInput === authModal.target.password) {
@@ -147,7 +146,6 @@ export default function Dashboard() {
     }
   }
 
-  // 🔥 수정 로직: 카테고리 수정 버튼 클릭 시 비밀 여부에 따라 처리
   const handleEditCategory = (cat) => {
     if (cat.is_private) {
       setAuthModal({ open: true, type: 'edit', target: cat });
@@ -219,6 +217,17 @@ export default function Dashboard() {
     }
   }
 
+  // 🔥 URL 복사 기능 추가
+  const handleCopyUrl = (e, url) => {
+    e.stopPropagation(); // 카드 클릭(상세보기) 방지
+    navigator.clipboard.writeText(url).then(() => {
+      alert('URL이 클립보드에 복사되었습니다! 📋');
+    }).catch(err => {
+      console.error('복사 실패:', err);
+      alert('복사에 실패했습니다.');
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[#020617] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] text-gray-100 pb-24 font-sans text-center selection:bg-blue-500/30">
       
@@ -288,10 +297,21 @@ export default function Dashboard() {
               />
             )}
             
+            {/* 🔥 제목 옆에 새 창 열기 버튼과 복사 버튼을 나란히 배치 */}
             <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
-              {item.title} 
-              {item.url && <a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()}><ExternalLink size={16} className="text-gray-500 hover:text-white" /></a>}
+              <span className="truncate">{item.title}</span>
+              {item.url && (
+                <div className="flex items-center gap-2 ml-1 shrink-0">
+                  <a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()} title="새 창으로 열기">
+                    <ExternalLink size={18} className="text-gray-500 hover:text-white transition-colors" />
+                  </a>
+                  <button onClick={(e) => handleCopyUrl(e, item.url)} title="URL 복사">
+                    <Copy size={18} className="text-gray-500 hover:text-blue-400 transition-colors" />
+                  </button>
+                </div>
+              )}
             </h3>
+            
             {item.login_id && <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-1"><Lock size={10}/> 계정 정보 포함됨</div>}
             {item.content && <p className="text-sm text-gray-400 mt-4 leading-relaxed line-clamp-2">{item.content}</p>}
           </div>
@@ -412,7 +432,6 @@ export default function Dashboard() {
                       <button type="button" onClick={() => moveCategory(index, 1)} disabled={index === categories.length - 1} className={`p-1 rounded hover:bg-white/10 ${index === categories.length - 1 ? 'text-gray-700' : 'text-gray-400'}`}><ChevronDown size={16}/></button>
                     </div>
                     <div className="w-[1px] h-4 bg-gray-700 mx-1"></div>
-                    {/* 🔥 이제 수정 버튼을 누르면 바로 수정되는 게 아니라 handleEditCategory를 통해 인증을 거칩니다 */}
                     <button onClick={() => handleEditCategory(cat)} className="text-gray-500 hover:text-blue-400"><Edit2 size={16} /></button>
                     <button onClick={() => handleDeleteCategory(cat.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={16} /></button>
                   </div>

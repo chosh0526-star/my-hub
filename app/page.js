@@ -309,7 +309,6 @@ export default function Dashboard() {
         </div>
 
         <nav className="flex-1 px-4 space-y-2 mt-4">
-          {/* 🔥 텍스트 '메인'으로 변경됨 */}
           <button 
             onClick={() => { setCurrentMenu('home'); setIsSidebarOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'home' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
@@ -335,25 +334,25 @@ export default function Dashboard() {
       <main className="flex-1 h-full overflow-y-auto relative bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] pb-32 no-scrollbar">
         
         {/* 상단 헤더 & 컨트롤 바 */}
-        <header className="sticky top-0 z-30 flex flex-col items-center pt-4 md:pt-14 pb-4 bg-[#020617]/80 backdrop-blur-2xl border-b border-white/5 shadow-2xl w-full px-4">
+        <header className="sticky top-0 z-30 flex flex-col items-center pt-4 md:pt-8 pb-4 bg-[#020617]/80 backdrop-blur-2xl border-b border-white/5 shadow-2xl w-full px-4">
           
-          {/* 🔥 타이틀과 햄버거 메뉴를 한 줄로 합쳐서 UI 가림 문제 완벽 해결 */}
-          <div className="flex justify-between items-center w-full max-w-5xl mb-4 md:justify-center">
+          {/* 🔥 데스크탑 타이틀 제거 (md:hidden) 및 모바일 햄버거 메뉴 한 줄 정렬 */}
+          <div className="flex justify-between items-center w-full max-w-5xl mb-4 md:hidden">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="md:hidden p-2 bg-white/5 rounded-xl border border-white/10 text-white hover:bg-white/10 transition-colors"
+              className="p-2 bg-white/5 rounded-xl border border-white/10 text-white hover:bg-white/10 transition-colors"
             >
               <Menu size={24} />
             </button>
-            <h1 onClick={handleTitleClick} className="text-4xl md:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)] cursor-pointer select-none active:scale-95 transition-transform text-center flex-1 md:flex-none">
+            <h1 onClick={handleTitleClick} className="text-4xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)] cursor-pointer select-none active:scale-95 transition-transform text-center flex-1">
               The Archive
             </h1>
-            {/* 타이틀 가운데 정렬을 맞추기 위한 투명 더미 블록 */}
-            <div className="w-10 md:hidden"></div>
+            <div className="w-10"></div> {/* 센터 맞춤용 더미 */}
           </div>
 
           {currentMenu === 'home' ? (
-            <div className="flex justify-center items-center gap-2 w-full max-w-5xl overflow-x-auto no-scrollbar pb-2">
+            // 🔥 빛 잘림 방지용 py-3 추가 및 모바일 가로 스크롤 전체 활용용 -mx-4 트릭
+            <div className="flex justify-start md:justify-center items-center gap-2 w-[calc(100%+2rem)] md:w-full max-w-5xl overflow-x-auto no-scrollbar py-3 px-4 md:px-0 -mx-4 md:mx-0">
               <div className="flex gap-2 shrink-0">
                 <button onClick={() => { setFilter('전체'); setCurrentSubfolder(null); setVisibleCount(20); }} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>전체</button>
                 <button onClick={() => { setFilter('★즐겨찾기'); setCurrentSubfolder(null); setVisibleCount(20); }} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '★즐겨찾기' ? 'bg-yellow-400 text-black font-bold shadow-[0_0_15px_rgba(250,204,21,0.4)] scale-105' : 'bg-white/5 text-yellow-500 backdrop-blur-lg border border-yellow-500/20 hover:bg-yellow-400/20'}`}>★ 즐겨찾기</button>
@@ -375,7 +374,7 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <div className="flex justify-between items-center w-full max-w-5xl pb-2 px-4">
+            <div className="flex justify-between items-center w-full max-w-5xl pb-2 md:pt-2">
               <h2 className="text-xl font-bold flex items-center gap-2 text-red-400"><Trash2 size={24}/> 휴지통</h2>
               <button onClick={handleEmptyTrash} disabled={totalItemsCount === 0} className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20 transition-all font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                 <AlertOctagon size={16}/> 휴지통 비우기

@@ -533,7 +533,9 @@ export default function Dashboard() {
               <div><div className="flex items-center gap-2 text-gray-500 text-xs mb-1"><Calendar size={12} /> <span>{formatDate(editingItem.created_at)}</span></div><h2 className="text-2xl font-bold">정보 수정 / 이동</h2></div>
               <button onClick={() => setIsDetailModalOpen(false)}><X size={24} /></button>
             </div>
+            
             <form onSubmit={handleUpdateItem} className="space-y-4">
+              {/* 공통: 상위 카테고리 및 폴더 위치 */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="text-xs text-gray-500 ml-1">상위 카테고리</label>
@@ -550,34 +552,55 @@ export default function Dashboard() {
                   </select>
                 </div>
               </div>
+
+              {/* 제목: 이미지 타입일 때만 (선택) 표시하고 필수(required) 해제 */}
               <div className="space-y-1">
-                <label className="text-xs text-gray-500 ml-1">제목</label>
-                <input required className="w-full bg-black border border-gray-800 rounded-xl p-3 font-bold text-white" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} />
+                <label className="text-xs text-gray-500 ml-1">제목 {editingItem.type === 'image' && <span className="text-gray-600">(선택)</span>}</label>
+                <input required={editingItem.type !== 'image'} className="w-full bg-black border border-gray-800 rounded-xl p-3 font-bold text-white" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} />
               </div>
-              {editingItem.image_url && ( 
-                <div className="relative group">
-                  <img src={editingItem.image_url} className="w-full h-40 object-cover rounded-xl border border-gray-800" />
-                  <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-all rounded-xl"><span className="text-xs font-bold">사진 교체</span><input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} /></label>
-                </div> 
+
+              {/* 이미지 칸: '링크(URL)' 타입이거나 '이미지' 타입일 때만 표시 */}
+              {(editingItem.type === 'image' || editingItem.type === 'link') && (
+                <div className="relative group mt-2">
+                  {editingItem.image_url ? (
+                    <img src={editingItem.image_url} className="w-full h-40 object-cover rounded-xl border border-gray-800" />
+                  ) : (
+                    editingItem.type === 'image' && (
+                      <div className="w-full h-40 border-2 border-dashed border-gray-800 rounded-xl flex items-center justify-center bg-black/30">
+                        <span className="text-sm text-gray-500">이미지 없음</span>
+                      </div>
+                    )
+                  )}
+                  <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-all rounded-xl"><span className="text-xs font-bold">사진 교체/추가</span><input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} /></label>
+                </div>
               )}
+
+              {/* URL 및 ID/PW: 오직 '링크(URL)' 타입일 때만 표시 */}
+              {editingItem.type === 'link' && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-500 ml-1">사이트 주소 (URL)</label>
+                    <input placeholder="naver.com" className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.url || ''} onChange={e => setEditingItem({...editingItem, url: e.target.value})} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-xs text-gray-500 ml-1">ID</label>
+                      <input className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.login_id || ''} onChange={e => setEditingItem({...editingItem, login_id: e.target.value})} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-gray-500 ml-1">PW</label>
+                      <input className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.login_pw || ''} onChange={e => setEditingItem({...editingItem, login_pw: e.target.value})} />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* 메모: 메모나 이메일 타입이면 세로 길이를 2배(h-64)로 쫙 늘려줌 */}
               <div className="space-y-1">
-                <label className="text-xs text-gray-500 ml-1">사이트 주소 (URL)</label>
-                <input placeholder="naver.com" className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.url || ''} onChange={e => setEditingItem({...editingItem, url: e.target.value})} />
+                <label className="text-xs text-gray-500 ml-1">메모 내용</label>
+                <textarea className={`w-full bg-black border border-gray-800 rounded-xl p-3 text-sm leading-relaxed text-white ${(editingItem.type === 'memo' || editingItem.type === 'email') ? 'h-64' : 'h-32'}`} value={editingItem.content || ''} onChange={e => setEditingItem({...editingItem, content: e.target.value})} />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-500 ml-1">ID</label>
-                  <input className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.login_id || ''} onChange={e => setEditingItem({...editingItem, login_id: e.target.value})} />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-500 ml-1">PW</label>
-                  <input className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.login_pw || ''} onChange={e => setEditingItem({...editingItem, login_pw: e.target.value})} />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500 ml-1">메모</label>
-                <textarea className="w-full bg-black border border-gray-800 rounded-xl p-3 h-32 text-sm leading-relaxed text-white" value={editingItem.content || ''} onChange={e => setEditingItem({...editingItem, content: e.target.value})} />
-              </div>
+
               <div className="flex gap-2 pt-4">
                 <button type="button" onClick={() => handleSoftDelete(editingItem.id)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500/20 transition-all" title="휴지통으로 이동"><Trash2 size={20} /></button>
                 <button type="submit" className="flex-1 bg-white text-black font-extrabold p-4 rounded-2xl active:scale-95 transition-all">저장하기</button>

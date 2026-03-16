@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-// 🔥 Menu, ArchiveRestore, AlertOctagon 등 사이드바와 휴지통을 위한 아이콘 대거 추가!
 import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Calendar, Search, Star, ChevronUp, ChevronDown, FolderOpen, FolderPlus, ArrowLeft, Folder, CheckCircle2, Circle, CheckSquare, MoveRight, ArrowDownUp, Menu, Home, ArchiveRestore, AlertOctagon } from 'lucide-react';
 
 export default function Dashboard() {
@@ -10,9 +9,8 @@ export default function Dashboard() {
   const [categories, setCategories] = useState([]);
   const [subfolders, setSubfolders] = useState([]); 
   
-  // 🔥 사이드바 및 탭 관리 상태
-  const [currentMenu, setCurrentMenu] = useState('home'); // 'home' | 'trash'
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // 모바일용 사이드바 토글
+  const [currentMenu, setCurrentMenu] = useState('home'); 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); 
 
   const [filter, setFilter] = useState('전체');
   const [currentSubfolder, setCurrentSubfolder] = useState(null); 
@@ -96,9 +94,7 @@ export default function Dashboard() {
   };
 
   const handleCardClick = (item) => {
-    // 휴지통 모드일 때는 카드 열람/수정 방지
     if (currentMenu === 'trash') return;
-
     if (isSelectMode) {
       if (selectedItems.includes(item.id)) setSelectedItems(selectedItems.filter(id => id !== item.id));
       else setSelectedItems([...selectedItems, item.id]);
@@ -223,7 +219,6 @@ export default function Dashboard() {
     navigator.clipboard.writeText(url).then(() => alert('URL이 클립보드에 복사되었습니다! 📋')).catch(err => alert('복사에 실패했습니다.'));
   };
 
-  // 🔥 휴지통으로 이동 (소프트 딜리트)
   async function handleSoftDelete(id) {
     if (confirm('휴지통으로 이동하시겠습니까?')) {
       await supabase.from('dashboard_items').update({ is_deleted: true }).eq('id', id);
@@ -231,14 +226,12 @@ export default function Dashboard() {
     }
   }
 
-  // 🔥 휴지통에서 복구
   async function handleRestore(e, id) {
     e.stopPropagation();
     await supabase.from('dashboard_items').update({ is_deleted: false }).eq('id', id);
     fetchInitialData();
   }
 
-  // 🔥 영구 삭제 (하드 딜리트)
   async function handleHardDelete(e, id) {
     e.stopPropagation();
     if (confirm('영구 삭제하면 다시는 복구할 수 없습니다. 삭제하시겠습니까?')) {
@@ -247,7 +240,6 @@ export default function Dashboard() {
     }
   }
 
-  // 🔥 다중 일괄 휴지통 이동
   const handleBatchDelete = async () => {
     if (selectedItems.length === 0) return;
     if (confirm(`선택한 ${selectedItems.length}개의 항목을 휴지통으로 보내시겠습니까?`)) {
@@ -256,7 +248,6 @@ export default function Dashboard() {
     }
   };
 
-  // 🔥 휴지통 비우기
   const handleEmptyTrash = async () => {
     if (confirm('휴지통에 있는 모든 항목을 영구 삭제하시겠습니까? (복구 불가)')) {
       await supabase.from('dashboard_items').delete().eq('is_deleted', true);
@@ -272,18 +263,15 @@ export default function Dashboard() {
     setIsBatchMoveModalOpen(false); setIsSelectMode(false); setSelectedItems([]); fetchInitialData();
   };
 
-  // 🔥 필터링 & 정렬 & 더보기 로직 결합
   let processedItems = [...items];
 
   if (currentMenu === 'trash') {
-    // 휴지통 뷰: 삭제된 항목만 검색어 적용해서 보여줌
     const lowerSearch = searchTerm.toLowerCase();
     processedItems = processedItems.filter(item => 
       item.is_deleted && 
       (item.title?.toLowerCase().includes(lowerSearch) || item.content?.toLowerCase().includes(lowerSearch))
     );
   } else {
-    // 홈 뷰: 삭제되지 않은 항목만 기존 카테고리/폴더 필터 적용
     processedItems = processedItems.filter(item => {
       if (item.is_deleted) return false;
 
@@ -301,7 +289,6 @@ export default function Dashboard() {
     });
   }
 
-  // 정렬
   processedItems.sort((a, b) => {
     const dateA = new Date(a.created_at).getTime();
     const dateB = new Date(b.created_at).getTime();
@@ -314,14 +301,6 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen bg-[#020617] text-gray-100 font-sans selection:bg-blue-500/30 overflow-hidden">
       
-      {/* 📱 모바일용 햄버거 메뉴 버튼 (상단 좌측) */}
-      <button 
-        onClick={() => setIsSidebarOpen(true)}
-        className="md:hidden fixed top-5 left-5 z-40 p-2 bg-white/10 rounded-xl backdrop-blur-md border border-white/10 text-white"
-      >
-        <Menu size={24} />
-      </button>
-
       {/* 🖥️ 사이드바 (Sidebar) */}
       <aside className={`fixed md:relative z-50 w-64 h-full bg-[#020617]/95 backdrop-blur-3xl border-r border-white/5 shadow-2xl transition-transform transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} flex flex-col`}>
         <div className="p-6 pt-14 md:pt-8 flex justify-between items-center">
@@ -330,11 +309,12 @@ export default function Dashboard() {
         </div>
 
         <nav className="flex-1 px-4 space-y-2 mt-4">
+          {/* 🔥 텍스트 '메인'으로 변경됨 */}
           <button 
             onClick={() => { setCurrentMenu('home'); setIsSidebarOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'home' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
           >
-            <Home size={20} /> 모든 기록
+            <Home size={20} /> 메인
           </button>
           <button 
             onClick={() => { setCurrentMenu('trash'); setCurrentSubfolder(null); setIsSidebarOpen(false); }}
@@ -355,10 +335,24 @@ export default function Dashboard() {
       <main className="flex-1 h-full overflow-y-auto relative bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] pb-32 no-scrollbar">
         
         {/* 상단 헤더 & 컨트롤 바 */}
-        <header className="sticky top-0 z-30 flex flex-col items-center pt-6 md:pt-14 pb-4 bg-[#020617]/80 backdrop-blur-2xl border-b border-white/5 shadow-2xl w-full px-4">
+        <header className="sticky top-0 z-30 flex flex-col items-center pt-4 md:pt-14 pb-4 bg-[#020617]/80 backdrop-blur-2xl border-b border-white/5 shadow-2xl w-full px-4">
           
+          {/* 🔥 타이틀과 햄버거 메뉴를 한 줄로 합쳐서 UI 가림 문제 완벽 해결 */}
+          <div className="flex justify-between items-center w-full max-w-5xl mb-4 md:justify-center">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="md:hidden p-2 bg-white/5 rounded-xl border border-white/10 text-white hover:bg-white/10 transition-colors"
+            >
+              <Menu size={24} />
+            </button>
+            <h1 onClick={handleTitleClick} className="text-4xl md:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)] cursor-pointer select-none active:scale-95 transition-transform text-center flex-1 md:flex-none">
+              The Archive
+            </h1>
+            {/* 타이틀 가운데 정렬을 맞추기 위한 투명 더미 블록 */}
+            <div className="w-10 md:hidden"></div>
+          </div>
+
           {currentMenu === 'home' ? (
-            // 홈 모드 컨트롤러 (카테고리 탭 등)
             <div className="flex justify-center items-center gap-2 w-full max-w-5xl overflow-x-auto no-scrollbar pb-2">
               <div className="flex gap-2 shrink-0">
                 <button onClick={() => { setFilter('전체'); setCurrentSubfolder(null); setVisibleCount(20); }} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>전체</button>
@@ -381,7 +375,6 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            // 휴지통 모드 컨트롤러
             <div className="flex justify-between items-center w-full max-w-5xl pb-2 px-4">
               <h2 className="text-xl font-bold flex items-center gap-2 text-red-400"><Trash2 size={24}/> 휴지통</h2>
               <button onClick={handleEmptyTrash} disabled={totalItemsCount === 0} className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20 transition-all font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed">
@@ -390,7 +383,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* 공통 검색창 */}
           <div className="w-full max-w-5xl mt-2 px-4 md:px-0">
             <div className="relative group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-white transition-colors" size={18} />
@@ -402,7 +394,6 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 px-6 max-w-7xl mx-auto">
           
-          {/* 폴더 진입 바 (홈 모드에서만) */}
           {currentMenu === 'home' && currentSubfolder && (
             <div className="col-span-1 md:col-span-2 lg:col-span-3 mb-2 flex items-center gap-4 bg-gray-900 border border-gray-800 rounded-[2rem] p-4 shadow-xl">
               <button onClick={() => setCurrentSubfolder(null)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors bg-white/5 px-4 py-3 rounded-2xl"><ArrowLeft size={20} /> <span className="text-sm font-bold">카테고리로 나가기</span></button>
@@ -410,7 +401,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* 얇은 리스트형 폴더 (홈 모드에서만) */}
           {currentMenu === 'home' && filter !== '전체' && filter !== '★즐겨찾기' && !currentSubfolder && !isSelectMode && (
             <div className="col-span-1 md:col-span-2 lg:col-span-3 space-y-2 mb-2">
               {subfolders.filter(sf => sf.category_id === categories.find(c => c.name === filter)?.id).map(sf => (
@@ -422,7 +412,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* 📚 정보 카드들 */}
           {displayedItems.map(item => {
             const isSelected = selectedItems.includes(item.id);
             return (
@@ -437,19 +426,16 @@ export default function Dashboard() {
                       : 'bg-gray-900 border-gray-800 hover:border-white/20 cursor-pointer'
                 }`}
               >
-                {/* 다중 선택 체크박스 */}
                 {currentMenu === 'home' && isSelectMode && (
                   <div className="absolute top-5 left-5 z-10">{isSelected ? <CheckCircle2 className="text-blue-500 bg-black rounded-full" size={24} /> : <Circle className="text-gray-600 hover:text-white" size={24} />}</div>
                 )}
 
-                {/* 휴지통 모드가 아닐 때 즐겨찾기 */}
                 {currentMenu === 'home' && !isSelectMode && (
                   <button onClick={(e) => toggleFavorite(e, item)} className="absolute top-5 right-5 text-gray-600 hover:text-yellow-400 transition-colors z-10">
                     <Star size={22} fill={item.is_favorite ? "currentColor" : "none"} className={item.is_favorite ? "text-yellow-400" : ""} />
                   </button>
                 )}
 
-                {/* 🔥 휴지통 모드 액션 버튼 (복구 & 영구삭제) */}
                 {currentMenu === 'trash' && (
                   <div className="absolute top-5 right-5 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={(e) => handleRestore(e, item.id)} className="p-2 bg-blue-500/20 text-blue-400 rounded-full hover:bg-blue-500/40 transition-colors" title="복구하기"><ArchiveRestore size={18} /></button>
@@ -485,7 +471,6 @@ export default function Dashboard() {
           })}
         </div>
 
-        {/* 더 보기 버튼 */}
         {visibleCount < totalItemsCount && (
           <div className="flex justify-center mt-8 mb-16">
             <button onClick={() => setVisibleCount(prev => prev + 20)} className="bg-white/5 border border-white/10 text-gray-300 px-8 py-3 rounded-full font-bold hover:bg-white/10 hover:text-white transition-all backdrop-blur-md shadow-lg">
@@ -494,7 +479,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* 데이터 없음 안내 */}
         {totalItemsCount === 0 && (
           <div className="flex flex-col items-center justify-center mt-32 text-gray-500">
             {currentMenu === 'trash' ? <><ArchiveRestore size={48} className="mb-4 opacity-20"/> 휴지통이 비어있습니다.</> : <><FolderOpen size={48} className="mb-4 opacity-20"/> 여기는 텅 비어있네요. 기록을 시작해 보세요!</>}
@@ -502,7 +486,6 @@ export default function Dashboard() {
         )}
       </main>
 
-      {/* --- 플로팅 버튼들 --- */}
       {currentMenu === 'home' && !isSelectMode && (
         <>
           {filter !== '전체' && filter !== '★즐겨찾기' && (
@@ -514,7 +497,6 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* 다중 선택 하단 바 */}
       {currentMenu === 'home' && isSelectMode && (
         <div className="fixed bottom-8 left-1/2 md:left-[calc(50%+8rem)] -translate-x-1/2 bg-gray-900 border border-gray-700 rounded-full px-6 py-4 flex items-center gap-6 shadow-[0_20px_40px_rgba(0,0,0,0.8)] z-50 animate-in slide-in-from-bottom-10 backdrop-blur-xl">
           <span className="text-white font-bold whitespace-nowrap"><span className="text-blue-400">{selectedItems.length}</span>개 선택됨</span>
@@ -525,7 +507,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* --- 모달들 --- */}
       {isBatchMoveModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[110] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
@@ -543,7 +524,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* (세부 폴더, 카드 작성, 휴지통용 수정창, 인증 모달 생략 - 기존 유지) */}
       {isSubfolderModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl"><FolderPlus className="text-blue-400 mx-auto mb-6" size={32} /><h2 className="text-2xl font-bold mb-6">새 폴더 만들기</h2><form onSubmit={handleCreateSubfolder} className="space-y-4"><input autoFocus required type="text" placeholder="폴더 이름을 입력하세요" className="w-full bg-black border border-gray-800 rounded-2xl p-4 text-center text-xl outline-none text-white focus:border-blue-500/50 transition-colors" value={newSubfolderName} onChange={(e) => setNewSubfolderName(e.target.value)} /><div className="flex gap-3 pt-2"><button type="button" onClick={() => setIsSubfolderModalOpen(false)} className="flex-1 bg-gray-800 text-gray-300 font-bold p-4 rounded-2xl">취소</button><button type="submit" className="flex-1 bg-white text-black font-bold p-4 rounded-2xl">생성하기</button></div></form></div>

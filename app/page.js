@@ -500,7 +500,8 @@ export default function Dashboard() {
               <div 
                 key={item.id} 
                 onClick={() => handleCardClick(item)} 
-                className={`border rounded-3xl p-6 shadow-xl relative group transition-all flex flex-col ${
+                // 🔥 [수정 1] flex flex-col 뒤에 max-h-[36rem]을 추가! (카드가 무한정 길어지는 것 방지)
+                className={`border rounded-3xl p-6 shadow-xl relative group transition-all flex flex-col max-h-[36rem] ${
                   currentMenu === 'trash' ? 'bg-red-950/20 border-red-900/30 opacity-70 hover:opacity-100 cursor-default' : 
                   isSelectMode ? (isSelected ? 'bg-blue-900/30 border-blue-500 ring-2 ring-blue-500/50 cursor-pointer' : 'bg-gray-900/50 border-gray-800 hover:border-white/20 opacity-60 hover:opacity-100 cursor-pointer') : 
                   'bg-gray-900 border-gray-800 hover:border-white/20 cursor-pointer'
@@ -522,10 +523,9 @@ export default function Dashboard() {
                   <div className="text-[9px] text-gray-600 font-mono">{new Date(item.created_at).toLocaleDateString()}</div>
                 </div>
 
-                {/* 🔥 [인스타 UI] 표지 하나만 보여주고 클릭 시 대화면 슬라이드 띄우기 */}
                 {hasImages && (
                   <div 
-                    className="relative group/img w-full h-48 rounded-2xl mb-4 border border-gray-800 overflow-hidden cursor-pointer"
+                    className="relative group/img w-full h-48 rounded-2xl mb-4 border border-gray-800 overflow-hidden cursor-pointer shrink-0"
                     onClick={(e) => { 
                       if(currentMenu === 'home' && !isSelectMode){ 
                         e.stopPropagation(); 
@@ -546,16 +546,23 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                <h3 className={`text-xl font-bold mb-2 flex items-center gap-2 ${currentMenu === 'trash' ? 'text-gray-400 line-through' : ''}`}>
+                <h3 className={`text-xl font-bold mb-2 flex items-center gap-2 shrink-0 ${currentMenu === 'trash' ? 'text-gray-400 line-through' : ''}`}>
                   <span className="truncate">{item.title}</span>
                   {item.url && currentMenu === 'home' && !isSelectMode && (
                     <div className="flex items-center gap-2 ml-1 shrink-0"><a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()}><ExternalLink size={18} className="text-gray-500 hover:text-white transition-colors" /></a><button onClick={(e) => handleCopyUrl(e, item.url)}><Copy size={18} className="text-gray-500 hover:text-blue-400 transition-colors" /></button></div>
                   )}
                 </h3>
-                {item.login_id && currentMenu === 'home' && <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-1"><Lock size={10}/> 계정 정보 포함됨</div>}
+                {item.login_id && currentMenu === 'home' && <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-1 shrink-0"><Lock size={10}/> 계정 정보 포함됨</div>}
                 
                 {item.content && (
-                  <div className="mt-4 overflow-hidden" style={{ maxHeight: '16rem', WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)', maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)' }}>
+                  // 🔥 [수정 2] flex-1 추가 (끝까지 늘어나기), maxHeight 삭제, 그라데이션 고정 (calc(100% - 2.5rem))
+                  <div 
+                    className="mt-4 flex-1 overflow-hidden" 
+                    style={{ 
+                      WebkitMaskImage: 'linear-gradient(to bottom, black calc(100% - 2.5rem), transparent 100%)', 
+                      maskImage: 'linear-gradient(to bottom, black calc(100% - 2.5rem), transparent 100%)' 
+                    }}
+                  >
                     <p className={`text-sm leading-relaxed whitespace-pre-wrap ${currentMenu === 'trash' ? 'text-gray-600' : 'text-gray-400'}`}>{item.content}</p>
                   </div>
                 )}

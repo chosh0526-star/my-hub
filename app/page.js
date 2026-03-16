@@ -444,52 +444,71 @@ export default function Dashboard() {
           {displayedItems.map(item => {
             const isSelected = selectedItems.includes(item.id);
             return (
-              // 🔥 1. 카드를 'flex flex-col h-full'로 만들어서 빈 공간이 생기면 위아래로 쭉 늘어날 수 있게 세팅합니다.
-              <div key={item.id} onClick={() => handleCardClick(item)} className={`border rounded-3xl p-6 shadow-xl relative group transition-all flex flex-col h-full ${currentMenu === 'trash' ? 'bg-red-950/20 border-red-900/30 opacity-70 hover:opacity-100 cursor-default' : isSelectMode ? (isSelected ? 'bg-blue-900/30 border-blue-500 ring-2 ring-blue-500/50 cursor-pointer' : 'bg-gray-900/50 border-gray-800 hover:border-white/20 opacity-60 hover:opacity-100 cursor-pointer') : 'bg-gray-900 border-gray-800 hover:border-white/20 cursor-pointer'}`}>
+              <div 
+                key={item.id} 
+                onClick={() => handleCardClick(item)} 
+                // 🔥 h-full을 제거하여, 이미지 없는 줄은 자기 내용물 높이만큼만 작아지게 합니다.
+                // 대신 flex-col을 유지하여 줄 안에서 늘어난 공간은 활용할 수 있게 합니다.
+                className={`border rounded-3xl p-6 shadow-xl relative group transition-all flex flex-col ${
+                  currentMenu === 'trash' 
+                    ? 'bg-red-950/20 border-red-900/30 opacity-70 hover:opacity-100 cursor-default' 
+                    : isSelectMode 
+                      ? (isSelected ? 'bg-blue-900/30 border-blue-500 ring-2 ring-blue-500/50 cursor-pointer' : 'bg-gray-900/50 border-gray-800 hover:border-white/20 opacity-60 hover:opacity-100 cursor-pointer') 
+                      : 'bg-gray-900 border-gray-800 hover:border-white/20 cursor-pointer'
+                }`}
+              >
                 
-                {(currentMenu === 'home' || currentMenu === 'mailbox') && isSelectMode && ( <div className="absolute top-5 left-5 z-10">{isSelected ? <CheckCircle2 className="text-blue-500 bg-black rounded-full" size={24} /> : <Circle className="text-gray-600 hover:text-white" size={24} />}</div> )}
-                {currentMenu === 'home' && !isSelectMode && ( <button onClick={(e) => toggleFavorite(e, item)} className="absolute top-5 right-5 text-gray-600 hover:text-yellow-400 transition-colors z-10"><Star size={22} fill={item.is_favorite ? "currentColor" : "none"} className={item.is_favorite ? "text-yellow-400" : ""} /></button> )}
-                
-                {currentMenu === 'mailbox' && !isSelectMode && ( <div className="absolute top-5 right-5 text-indigo-400/30 z-10"><Mail size={22} /></div> )}
-                
-                {currentMenu === 'trash' && (
-                  <div className="absolute top-5 right-5 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => handleRestore(e, item.id)} className="p-2 bg-blue-500/20 text-blue-400 rounded-full hover:bg-blue-500/40 transition-colors" title="복구하기"><ArchiveRestore size={18} /></button>
-                    <button onClick={(e) => handleHardDelete(e, item.id)} className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500/40 transition-colors" title="영구 삭제"><Trash2 size={18} /></button>
-                  </div>
-                )}
-                
+                {/* 상단 뱃지 및 날짜 영역 */}
                 <div className={`mb-4 flex items-center gap-2 ${isSelectMode && (currentMenu === 'home' || currentMenu === 'mailbox') ? 'ml-8' : ''}`}>
                   {item.category_id && <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">{categories.find(c => c.id === item.category_id)?.name}</span>}
                   {!item.category_id && <span className="text-[10px] font-bold tracking-widest uppercase text-indigo-400 bg-indigo-400/10 px-3 py-1 rounded-full">수신됨</span>}
-                  
-                  {item.subfolder_id && !currentSubfolder && ( <span className="text-[10px] font-bold tracking-widest uppercase text-purple-400 bg-purple-400/10 px-3 py-1 rounded-full flex items-center gap-1"><Folder size={10}/> {subfolders.find(s => s.id === item.subfolder_id)?.name}</span> )}
                   <div className="text-[9px] text-gray-600 font-mono">{new Date(item.created_at).toLocaleDateString()}</div>
                 </div>
 
-                {item.image_url && ( <img src={item.image_url} className={`w-full h-48 object-cover rounded-2xl mb-4 border border-gray-800 transition-opacity ${currentMenu === 'home' && !isSelectMode ? 'cursor-zoom-in hover:opacity-90' : ''}`} alt="uploaded" onClick={(e) => { if(currentMenu === 'home' && !isSelectMode){ e.stopPropagation(); setZoomedImage(item.image_url); } }} /> )}
+                {/* 이미지 영역 */}
+                {item.image_url && ( 
+                  <img 
+                    src={item.image_url} 
+                    className="w-full h-48 object-cover rounded-2xl mb-4 border border-gray-800 transition-opacity cursor-zoom-in hover:opacity-90" 
+                    alt="uploaded" 
+                    onClick={(e) => { e.stopPropagation(); setZoomedImage(item.image_url); }} 
+                  /> 
+                )}
+
+                {/* 제목 영역 */}
                 <h3 className={`text-xl font-bold mb-2 flex items-center gap-2 ${currentMenu === 'trash' ? 'text-gray-400 line-through' : ''}`}>
                   <span className="truncate">{item.title}</span>
                   {item.url && currentMenu === 'home' && !isSelectMode && (
-                    <div className="flex items-center gap-2 ml-1 shrink-0"><a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()} title="새 창으로 열기"><ExternalLink size={18} className="text-gray-500 hover:text-white transition-colors" /></a><button onClick={(e) => handleCopyUrl(e, item.url)} title="URL 복사"><Copy size={18} className="text-gray-500 hover:text-blue-400 transition-colors" /></button></div>
+                    <div className="flex items-center gap-2 ml-1 shrink-0">
+                      <a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()}><ExternalLink size={18} className="text-gray-500 hover:text-white transition-colors" /></a>
+                      <button onClick={(e) => handleCopyUrl(e, item.url)}><Copy size={18} className="text-gray-500 hover:text-blue-400 transition-colors" /></button>
+                    </div>
                   )}
                 </h3>
-                {item.login_id && currentMenu === 'home' && <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-1"><Lock size={10}/> 계정 정보 포함됨</div>}
-                
-                {/* 🔥 2. 메모 텍스트가 남은 공간(flex-1)을 꽉 채우고, 바닥에 닿으면 자연스럽게 흐려지도록(maskImage) 만듭니다. */}
+
+                {/* 본문 텍스트 영역: 더 많은 내용을 보여주되, 공간이 부족하면 페이드아웃 */}
                 {item.content && (
                   <div 
-                    className="flex-1 mt-4 overflow-hidden max-h-[16rem]"
+                    className="mt-4 overflow-hidden"
                     style={{
-                      WebkitMaskImage: 'linear-gradient(to bottom, black calc(100% - 2rem), transparent 100%)',
-                      maskImage: 'linear-gradient(to bottom, black calc(100% - 2rem), transparent 100%)'
+                      // 🔥 줄 수를 제한하지 않고, 카드가 늘어나면 늘어나는 대로 내용을 더 보여줍니다.
+                      // 최대 높이를 넉넉하게(예: 12줄 정도) 잡아서 카드가 너무 무한정 길어지는 것만 방지합니다.
+                      maxHeight: '16rem', 
+                      WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
+                      maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)'
                     }}
                   >
-                    {/* whitespace-pre-wrap을 추가해서 엔터(줄바꿈)도 예쁘게 유지되게 했습니다! */}
                     <p className={`text-sm leading-relaxed whitespace-pre-wrap ${currentMenu === 'trash' ? 'text-gray-600' : 'text-gray-400'}`}>
                       {item.content}
                     </p>
                   </div>
+                )}
+                
+                {/* 별점/아이콘 버튼들은 하단에 고정 */}
+                {currentMenu === 'home' && !isSelectMode && ( 
+                  <button onClick={(e) => toggleFavorite(e, item)} className="absolute top-5 right-5 text-gray-600 hover:text-yellow-400 transition-colors z-10">
+                    <Star size={22} fill={item.is_favorite ? "currentColor" : "none"} className={item.is_favorite ? "text-yellow-400" : ""} />
+                  </button> 
                 )}
               </div>
             );

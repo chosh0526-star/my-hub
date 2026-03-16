@@ -444,11 +444,12 @@ export default function Dashboard() {
           {displayedItems.map(item => {
             const isSelected = selectedItems.includes(item.id);
             return (
-              <div key={item.id} onClick={() => handleCardClick(item)} className={`border rounded-3xl p-6 shadow-xl relative group transition-all ${currentMenu === 'trash' ? 'bg-red-950/20 border-red-900/30 opacity-70 hover:opacity-100 cursor-default' : isSelectMode ? (isSelected ? 'bg-blue-900/30 border-blue-500 ring-2 ring-blue-500/50 cursor-pointer' : 'bg-gray-900/50 border-gray-800 hover:border-white/20 opacity-60 hover:opacity-100 cursor-pointer') : 'bg-gray-900 border-gray-800 hover:border-white/20 cursor-pointer'}`}>
+              // 🔥 1. 카드를 'flex flex-col h-full'로 만들어서 빈 공간이 생기면 위아래로 쭉 늘어날 수 있게 세팅합니다.
+              <div key={item.id} onClick={() => handleCardClick(item)} className={`border rounded-3xl p-6 shadow-xl relative group transition-all flex flex-col h-full ${currentMenu === 'trash' ? 'bg-red-950/20 border-red-900/30 opacity-70 hover:opacity-100 cursor-default' : isSelectMode ? (isSelected ? 'bg-blue-900/30 border-blue-500 ring-2 ring-blue-500/50 cursor-pointer' : 'bg-gray-900/50 border-gray-800 hover:border-white/20 opacity-60 hover:opacity-100 cursor-pointer') : 'bg-gray-900 border-gray-800 hover:border-white/20 cursor-pointer'}`}>
+                
                 {(currentMenu === 'home' || currentMenu === 'mailbox') && isSelectMode && ( <div className="absolute top-5 left-5 z-10">{isSelected ? <CheckCircle2 className="text-blue-500 bg-black rounded-full" size={24} /> : <Circle className="text-gray-600 hover:text-white" size={24} />}</div> )}
                 {currentMenu === 'home' && !isSelectMode && ( <button onClick={(e) => toggleFavorite(e, item)} className="absolute top-5 right-5 text-gray-600 hover:text-yellow-400 transition-colors z-10"><Star size={22} fill={item.is_favorite ? "currentColor" : "none"} className={item.is_favorite ? "text-yellow-400" : ""} /></button> )}
                 
-                {/* 메일함 카드 UI */}
                 {currentMenu === 'mailbox' && !isSelectMode && ( <div className="absolute top-5 right-5 text-indigo-400/30 z-10"><Mail size={22} /></div> )}
                 
                 {currentMenu === 'trash' && (
@@ -474,7 +475,22 @@ export default function Dashboard() {
                   )}
                 </h3>
                 {item.login_id && currentMenu === 'home' && <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-1"><Lock size={10}/> 계정 정보 포함됨</div>}
-                {item.content && <p className={`text-sm mt-4 leading-relaxed line-clamp-2 ${currentMenu === 'trash' ? 'text-gray-600' : 'text-gray-400'}`}>{item.content}</p>}
+                
+                {/* 🔥 2. 메모 텍스트가 남은 공간(flex-1)을 꽉 채우고, 바닥에 닿으면 자연스럽게 흐려지도록(maskImage) 만듭니다. */}
+                {item.content && (
+                  <div 
+                    className="flex-1 mt-4 overflow-hidden max-h-[16rem]"
+                    style={{
+                      WebkitMaskImage: 'linear-gradient(to bottom, black calc(100% - 2rem), transparent 100%)',
+                      maskImage: 'linear-gradient(to bottom, black calc(100% - 2rem), transparent 100%)'
+                    }}
+                  >
+                    {/* whitespace-pre-wrap을 추가해서 엔터(줄바꿈)도 예쁘게 유지되게 했습니다! */}
+                    <p className={`text-sm leading-relaxed whitespace-pre-wrap ${currentMenu === 'trash' ? 'text-gray-600' : 'text-gray-400'}`}>
+                      {item.content}
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })}

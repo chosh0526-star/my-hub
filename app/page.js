@@ -484,7 +484,7 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* {/* 카드 그리드 */}
+        {/* 카드 그리드 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 px-6 max-w-7xl mx-auto">
           {displayedItems.map(item => {
             const isSelected = selectedItems.includes(item.id);
@@ -494,8 +494,8 @@ export default function Dashboard() {
               <div 
                 key={item.id} 
                 onClick={() => handleCardClick(item)} 
-                // 🔥 [수정 1] 카드 전체의 p-6 제거, 높이를 h-[20rem]으로 줄임, overflow-hidden 추가
-                className={`border rounded-3xl shadow-xl relative group transition-all flex flex-col h-[20rem] overflow-hidden ${
+                // 🔥 [복구] 원래의 p-6 패딩을 살리고 높이는 20rem으로 컴팩트하게 유지합니다.
+                className={`border rounded-3xl p-6 shadow-xl relative group transition-all flex flex-col h-[20rem] overflow-hidden ${
                   currentMenu === 'trash' ? 'bg-red-950/20 border-red-900/30 opacity-70 hover:opacity-100 cursor-default' : 
                   isSelectMode ? (isSelected ? 'bg-blue-900/30 border-blue-500 ring-2 ring-blue-500/50 cursor-pointer' : 'bg-gray-900/50 border-gray-800 hover:border-white/20 opacity-60 hover:opacity-100 cursor-pointer') : 
                   'bg-gray-900 border-gray-800 hover:border-white/20 cursor-pointer'
@@ -511,10 +511,16 @@ export default function Dashboard() {
                   </div>
                 )}
                 
-                {/* 🔥 [수정 2] 사진을 여백 없이 카드 너비에 꽉 채우기 */}
+                <div className={`mb-3 flex items-center gap-2 shrink-0 ${isSelectMode && (currentMenu === 'home' || currentMenu === 'mailbox') ? 'ml-8' : ''}`}>
+                  {item.category_id ? <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">{categories.find(c => c.id === item.category_id)?.name}</span> : <span className="text-[10px] font-bold tracking-widest uppercase text-indigo-400 bg-indigo-400/10 px-3 py-1 rounded-full">수신됨</span>}
+                  {item.subfolder_id && !currentSubfolder && ( <span className="text-[10px] font-bold tracking-widest uppercase text-purple-400 bg-purple-400/10 px-3 py-1 rounded-full flex items-center gap-1"><Folder size={10}/> {subfolders.find(s => s.id === item.subfolder_id)?.name}</span> )}
+                  <div className="text-[9px] text-gray-600 font-mono">{new Date(item.created_at).toLocaleDateString()}</div>
+                </div>
+
+                {/* 🔥 [핵심] 사진 영역: 고정 높이(h-48) 대신 flex-1을 주어 카드의 남는 잉여 공간을 사진이 스스로 꽉 채우게 만듭니다! */}
                 {hasImages && (
                   <div 
-                    className="relative group/img w-full h-32 overflow-hidden cursor-pointer shrink-0" // mb-4 제거, shrink-0 유지
+                    className="relative group/img w-full flex-1 rounded-2xl mb-3 border border-gray-800 overflow-hidden cursor-pointer min-h-0"
                     onClick={(e) => { 
                       if(currentMenu === 'home' && !isSelectMode){ 
                         e.stopPropagation(); 
@@ -535,36 +541,26 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* 텍스트 요소들 (여백 px-6, pb-6 적용) */}
-                <div className={`flex-1 flex flex-col p-6 ${hasImages ? 'pt-4' : ''}`}> {/* 사진이 있을 때만 위쪽 여백 추가 */}
-                  {/* 카테고리 뱃지 및 날짜 (여백 조정) */}
-                  <div className={`mb-3 flex items-center gap-2 shrink-0 ${isSelectMode && (currentMenu === 'home' || currentMenu === 'mailbox') ? 'ml-8' : ''}`}>
-                    {item.category_id ? <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">{categories.find(c => c.id === item.category_id)?.name}</span> : <span className="text-[10px] font-bold tracking-widest uppercase text-indigo-400 bg-indigo-400/10 px-3 py-1 rounded-full">수신됨</span>}
-                    {item.subfolder_id && !currentSubfolder && ( <span className="text-[10px] font-bold tracking-widest uppercase text-purple-400 bg-purple-400/10 px-3 py-1 rounded-full flex items-center gap-1"><Folder size={10}/> {subfolders.find(s => s.id === item.subfolder_id)?.name}</span> )}
-                    <div className="text-[9px] text-gray-600 font-mono">{new Date(item.created_at).toLocaleDateString()}</div>
-                  </div>
-
-                  {/* 제목 (여백 조정) */}
-                  <h3 className={`text-xl font-bold mb-1 flex items-center gap-2 shrink-0 ${currentMenu === 'trash' ? 'text-gray-400 line-through' : ''}`}>
-                    <span className="truncate">{item.title}</span>
-                    {item.url && currentMenu === 'home' && !isSelectMode && (
-                      <div className="flex items-center gap-2 ml-1 shrink-0"><a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()}><ExternalLink size={18} className="text-gray-500 hover:text-white transition-colors" /></a><button onClick={(e) => handleCopyUrl(e, item.url)}><Copy size={18} className="text-gray-500 hover:text-blue-400 transition-colors" /></button></div>
-                    )}
-                  </h3>
-                  {item.login_id && currentMenu === 'home' && <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5 shrink-0"><Lock size={10}/> 계정 정보 포함됨</div>}
-                  
-                  {item.content && (
-                    <div 
-                      className="mt-3 flex-1 overflow-hidden" 
-                      style={{ 
-                        WebkitMaskImage: 'linear-gradient(to bottom, black calc(100% - 2rem), transparent 100%)', // 흐려짐 기준 조정
-                        maskImage: 'linear-gradient(to bottom, black calc(100% - 2rem), transparent 100%)' 
-                      }}
-                    >
-                      <p className={`text-sm leading-relaxed whitespace-pre-wrap ${currentMenu === 'trash' ? 'text-gray-600' : 'text-gray-400'}`}>{item.content}</p>
-                    </div>
+                <h3 className={`text-xl font-bold mb-1 flex items-center gap-2 shrink-0 ${currentMenu === 'trash' ? 'text-gray-400 line-through' : ''}`}>
+                  <span className="truncate">{item.title}</span>
+                  {item.url && currentMenu === 'home' && !isSelectMode && (
+                    <div className="flex items-center gap-2 ml-1 shrink-0"><a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()}><ExternalLink size={18} className="text-gray-500 hover:text-white transition-colors" /></a><button onClick={(e) => handleCopyUrl(e, item.url)}><Copy size={18} className="text-gray-500 hover:text-blue-400 transition-colors" /></button></div>
                   )}
-                </div>
+                </h3>
+                {item.login_id && currentMenu === 'home' && <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5 shrink-0"><Lock size={10}/> 계정 정보 포함됨</div>}
+                
+                {/* 🔥 이미지가 없을 때는 메모가 길게 남는 공간을 꽉 채우고(flex-1), 이미지가 있을 때는 살짝만 보이게 설정 */}
+                {item.content && (
+                  <div 
+                    className={`overflow-hidden ${hasImages ? 'mt-1 max-h-[2.5rem]' : 'mt-4 flex-1'}`} 
+                    style={{ 
+                      WebkitMaskImage: 'linear-gradient(to bottom, black calc(100% - 1.5rem), transparent 100%)', 
+                      maskImage: 'linear-gradient(to bottom, black calc(100% - 1.5rem), transparent 100%)' 
+                    }}
+                  >
+                    <p className={`text-sm leading-relaxed whitespace-pre-wrap ${currentMenu === 'trash' ? 'text-gray-600' : 'text-gray-400'}`}>{item.content}</p>
+                  </div>
+                )}
               </div>
             );
           })}

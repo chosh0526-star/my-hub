@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-// 🔥 Mail 아이콘이 추가되었습니다!
-import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Calendar, Search, Star, ChevronUp, ChevronDown, FolderOpen, FolderPlus, ArrowLeft, Folder, CheckCircle2, Circle, CheckSquare, MoveRight, ArrowDownUp, Menu, Home, ArchiveRestore, AlertOctagon, Mail } from 'lucide-react';
+// 🔥 이미지 슬라이드에 필요한 아이콘들을 추가했습니다!
+import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Calendar, Search, Star, ChevronUp, ChevronDown, FolderOpen, FolderPlus, ArrowLeft, Folder, CheckCircle2, Circle, CheckSquare, MoveRight, ArrowDownUp, Menu, Home, ArchiveRestore, AlertOctagon, Mail, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Dashboard() {
   const [items, setItems] = useState([]);
@@ -24,7 +24,6 @@ export default function Dashboard() {
   const [batchTargetCat, setBatchTargetCat] = useState('');
   const [batchTargetSub, setBatchTargetSub] = useState('');
 
-  const [showPw, setShowPw] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [addStep, setAddStep] = useState('choice');
@@ -44,8 +43,15 @@ export default function Dashboard() {
   const [clickCount, setClickCount] = useState(0);
   const [zoomedImage, setZoomedImage] = useState(null);
 
+  // 🔥 다중 이미지 상태 관리
+  const [newItemImages, setNewItemImages] = useState([]); // 입력 모달용
+  const [editingItemImages, setEditingItemImages] = useState([]); // 상세 모달용
+  
+  // 🔥 이미지 슬라이드 현재 인덱스 관리 (카드별로 다르게 관리해야 함)
+  const [carouselIndices, setCarouselIndices] = useState({});
+
   const [newItem, setNewItem] = useState({
-    title: '', category_id: '', subfolder_id: null, type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: ''
+    title: '', category_id: '', subfolder_id: null, type: 'link', url: '', login_id: '', login_pw: '', content: ''
   });
 
   useEffect(() => { 
@@ -80,8 +86,29 @@ export default function Dashboard() {
       setNewItem(prev => ({ ...prev, category_id: catData[0].id }));
     }
 
-    const { data: itemData } = await supabase.from('dashboard_items').select('*');
-    setItems(itemData || []);
+    // 🔥 핵심: dashboard_items를 가져올 때, item_images 테이블도 함께 가져옵니다!
+    const { data: itemData, error } = await supabase
+      .from('dashboard_items')
+      .select('*, item_images (*)') // 'item_images (*)' 를 추가하여 연관된 이미지들을 함께 가져옴
+      .order('created_at', { ascending: false });
+    
+    if(error) {
+      console.error('Error fetching data:', error);
+    } else {
+      // 가져온 데이터에서 이미지들을 display_order 순으로 정렬해 줍니다.
+      const sortedItemData = itemData.map(item => ({
+        ...item,
+        item_images: (item.item_images || []).sort((a, b) => a.display_order - b.display_order)
+      }));
+      setItems(sortedItemData || []);
+
+      // 초기 슬라이드 인덱스를 0으로 설정
+      const initialIndices = {};
+      sortedItemData.forEach(item => {
+        initialIndices[item.id] = 0;
+      });
+      setCarouselIndices(initialIndices);
+    }
   }
 
   const handleTitleClick = () => {
@@ -98,7 +125,9 @@ export default function Dashboard() {
     setIsModalOpen(true);
     const currentCategory = categories.find(c => c.name === filter);
     const defaultCategoryId = currentCategory ? currentCategory.id : (categories.length > 0 ? categories[0].id : '');
-    setNewItem({ title: '', category_id: defaultCategoryId, subfolder_id: null, type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: '' });
+    setNewItem({ title: '', category_id: defaultCategoryId, subfolder_id: null, type: 'link', url: '', login_id: '', login_pw: '', content: '' });
+    // 🔥 새 이미지 목록 초기화
+    setNewItemImages([]);
   };
 
   const formatDate = (dateString) => {
@@ -113,20 +142,20 @@ export default function Dashboard() {
     return trimmedUrl;
   };
 
-  // 1. 기존 데이터 클릭 시 자동 보정 로직 추가
   const handleCardClick = (item) => {
     if (currentMenu === 'trash') return;
     if (isSelectMode) {
       if (selectedItems.includes(item.id)) setSelectedItems(selectedItems.filter(id => id !== item.id));
       else setSelectedItems([...selectedItems, item.id]);
     } else {
-      // 🔥 핵심: 과거에 '링크'로 잘못 저장된 메모 카드를 찰떡같이 알아보고 '메모'로 바꿔줍니다.
       let correctedType = item.type;
       if (correctedType === 'link' && !item.url && !item.login_id && !item.login_pw && item.content) {
         correctedType = 'memo';
       }
       
       setEditingItem({ ...item, type: correctedType });
+      // 🔥 상세 모달을 열 때, 해당 아이템의 이미지 목록도 함께 설정해 줍니다.
+      setEditingItemImages(item.item_images || []);
       setIsDetailModalOpen(true);
     }
   };
@@ -137,33 +166,109 @@ export default function Dashboard() {
     if (!error) fetchInitialData();
   };
 
-  const handleUpdateItem = async (e) => {
-    e.preventDefault();
-    const updatedUrl = fixUrl(editingItem.url);
-    const { error } = await supabase.from('dashboard_items').update({ ...editingItem, url: updatedUrl }).eq('id', editingItem.id);
-    if (error) alert('수정 실패!');
-    else { setIsDetailModalOpen(false); fetchInitialData(); }
+  // 🔥 이미지 슬라이드 인덱스 변경 함수
+  const changeCarouselIndex = (e, itemId, direction) => {
+    e.stopPropagation(); // 카드 클릭 이벤트 전파 방지
+    const item = items.find(i => i.id === itemId);
+    if(!item || !item.item_images || item.item_images.length <= 1) return;
+    
+    setCarouselIndices(prev => {
+      const currentIndex = prev[itemId] || 0;
+      let nextIndex = currentIndex + direction;
+      
+      if(nextIndex < 0) nextIndex = item.item_images.length - 1; // 처음에서 뒤로 가면 마지막으로
+      if(nextIndex >= item.item_images.length) nextIndex = 0; // 마지막에서 앞으로 가면 처음으로
+      
+      return { ...prev, [itemId]: nextIndex };
+    });
   };
 
-  // 2. 새로운 데이터 저장 시 타입 명확화
+  const handleUpdateItem = async (e) => {
+    e.preventDefault();
+    
+    const updatedUrl = fixUrl(editingItem.url);
+    const { data: updatedItem, error: itemError } = await supabase
+      .from('dashboard_items')
+      .update({ ...editingItem, url: updatedUrl })
+      .eq('id', editingItem.id)
+      .select()
+      .single();
+
+    if (itemError) {
+      alert('게시물 수정 실패!');
+      return;
+    }
+
+    // 🔥 이미지 목록 업데이트 (조금 복잡합니다!)
+    // 1. 기존 이미지 삭제 (item_id에 해당하는 모든 이미지를 지우고 다시 넣는 방식이 가장 간단함)
+    const { error: deleteError } = await supabase
+      .from('item_images')
+      .delete()
+      .eq('item_id', editingItem.id);
+    
+    if(deleteError) {
+      console.error('기존 이미지 삭제 실패:', deleteError);
+    }
+
+    // 2. 현재 이미지 목록 다시 삽입
+    if (editingItemImages.length > 0) {
+      const imagesToInsert = editingItemImages.map((img, index) => ({
+        item_id: editingItem.id,
+        image_url: img.image_url,
+        display_order: index
+      }));
+      const { error: insertError } = await supabase.from('item_images').insert(imagesToInsert);
+      if(insertError) {
+        console.error('새 이미지 삽입 실패:', insertError);
+      }
+    }
+
+    setIsDetailModalOpen(false); 
+    fetchInitialData();
+  };
+
   async function handleAddItem(e) {
     e.preventDefault();
     
-    // 🔥 저장할 때 사용자가 선택한 종류(addStep)에 따라 꼬리표(type)를 확실하게 달아줍니다!
     let exactType = 'link';
-    if (addStep === 'photo') exactType = 'image';
+    // 🔥 사진이 한 장이라도 있으면 자동으로 'image' 타입으로 설정
+    if (addStep === 'photo' || newItemImages.length > 0) exactType = 'image';
     if (addStep === 'memo') exactType = 'memo';
 
     const finalItem = { 
       ...newItem, 
       type: exactType, 
       url: fixUrl(newItem.url), 
-      title: newItem.title || (addStep === 'photo' ? '새 사진' : addStep === 'memo' ? '새 메모' : '새 링크') 
+      title: newItem.title || (addStep === 'photo' || newItemImages.length > 0 ? '새 사진' : addStep === 'memo' ? '새 메모' : '새 링크') 
     };
     
-    const { error } = await supabase.from('dashboard_items').insert([finalItem]);
-    if (error) alert('저장 실패: ' + error.message);
-    else { setIsModalOpen(false); fetchInitialData(); }
+    // 1. 먼저 dashboard_items에 게시물 삽입
+    const { data: insertedItem, error: itemError } = await supabase
+      .from('dashboard_items')
+      .insert([finalItem])
+      .select()
+      .single();
+
+    if (itemError) {
+      alert('저장 실패: ' + itemError.message);
+      return;
+    }
+
+    // 🔥 2. 삽입된 게시물의 ID를 가지고, item_images 테이블에 사진 URL들 삽입
+    if (insertedItem && newItemImages.length > 0) {
+      const imagesToInsert = newItemImages.map((img, index) => ({
+        item_id: insertedItem.id,
+        image_url: img,
+        display_order: index
+      }));
+      const { error: imagesError } = await supabase.from('item_images').insert(imagesToInsert);
+      if(imagesError) {
+        console.error('이미지 저장 실패:', imagesError);
+      }
+    }
+
+    setIsModalOpen(false); 
+    fetchInitialData();
   }
 
   const handleAuthConfirm = async (e) => {
@@ -240,19 +345,54 @@ export default function Dashboard() {
     fetchInitialData();
   }
 
+  // 🔥 이미지 다중 업로드 함수
   async function handleImageUpload(e) {
-    const file = e.target.files[0]; if (!file) return; setUploading(true);
-    let fileExt = 'jpg'; if (file.name && file.name.includes('.')) fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`; const filePath = `uploads/${fileName}`;
-    let { error } = await supabase.storage.from('images').upload(filePath, file);
-    if (error) alert('업로드 실패: ' + error.message);
-    else {
-      const { data } = supabase.storage.from('images').getPublicUrl(filePath);
-      if (isDetailModalOpen) setEditingItem({ ...editingItem, image_url: data.publicUrl });
-      else setNewItem({ ...newItem, image_url: data.publicUrl, type: 'image' });
+    const files = Array.from(e.target.files); // 여러 개의 파일을 배열로 변환
+    if (files.length === 0) return;
+    setUploading(true);
+    
+    const uploadedUrls = [];
+
+    // 🔥 모든 파일을 반복하면서 업로드
+    for (const file of files) {
+      let fileExt = 'jpg'; if (file.name && file.name.includes('.')) fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`; const filePath = `uploads/${fileName}`;
+      let { error } = await supabase.storage.from('images').upload(filePath, file);
+      
+      if (error) {
+        alert(`${file.name} 업로드 실패: ${error.message}`);
+      } else {
+        const { data } = supabase.storage.from('images').getPublicUrl(filePath);
+        uploadedUrls.push(data.publicUrl); // 업로드된 URL을 배열에 담기
+      }
     }
+
+    if (isDetailModalOpen) {
+      // 상세 모달일 경우, 기존 이미지 목록 뒤에 추가
+      setEditingItemImages(prev => [
+        ...prev,
+        ...uploadedUrls.map(url => ({ image_url: url }))
+      ]);
+    } else {
+      // 입력 모달일 경우, 새 이미지 목록 뒤에 추가
+      setNewItemImages(prev => [...prev, ...uploadedUrls]);
+      if(uploadedUrls.length > 0) {
+        setNewItem(prev => ({ ...prev, type: 'image' })); // 사진을 올리면 자동으로 image 타입으로 설정
+      }
+    }
+    
     setUploading(false);
   }
+
+  // 🔥 상세 모달에서 특정 사진 삭제 함수
+  const handleDeleteEditingImage = (index) => {
+    setEditingItemImages(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  // 🔥 입력 모달에서 특정 사진 삭제 함수
+  const handleDeleteNewImage = (index) => {
+    setNewItemImages(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleCopyUrl = (e, url) => {
     e.stopPropagation();
@@ -299,11 +439,11 @@ export default function Dashboard() {
     e.preventDefault();
     if (selectedItems.length === 0) return;
     const finalSubId = batchTargetSub === '' ? null : batchTargetSub;
-    await supabase.from('dashboard_items').update({ category_id: batchTargetCat, subfolder_id: finalSubId, type: 'memo' }).in('id', selectedItems);
+    // 타입을 memo로 바꾸는 로직을 제거했습니다. 카테고리 이동 시 타입은 유지되도록.
+    await supabase.from('dashboard_items').update({ category_id: batchTargetCat, subfolder_id: finalSubId }).in('id', selectedItems);
     setIsBatchMoveModalOpen(false); setIsSelectMode(false); setSelectedItems([]); fetchInitialData();
   };
 
-  // 🔥 핵심 로직: 사이드바 메뉴별 필터링 (메일함 격리)
   let processedItems = [...items];
 
   if (currentMenu === 'trash') {
@@ -313,7 +453,6 @@ export default function Dashboard() {
       (item.title?.toLowerCase().includes(lowerSearch) || item.content?.toLowerCase().includes(lowerSearch))
     );
   } else if (currentMenu === 'mailbox') {
-    // 🔥 메일함: 타입이 'email'인 것만 보여줍니다!
     const lowerSearch = searchTerm.toLowerCase();
     processedItems = processedItems.filter(item => 
       !item.is_deleted && item.type === 'email' &&
@@ -321,7 +460,6 @@ export default function Dashboard() {
     );
   } else {
     processedItems = processedItems.filter(item => {
-      // 🔥 홈 화면: 타입이 'email'인 것은 철저하게 숨깁니다!
       if (item.is_deleted || item.type === 'email') return false;
 
       const itemCat = categories.find(c => c.id === item.category_id);
@@ -359,7 +497,6 @@ export default function Dashboard() {
         <nav className="flex-1 px-4 space-y-2 mt-4">
           <button onClick={() => { setCurrentMenu('home'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'home' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Home size={20} /> 메인</button>
           
-          {/* 🔥 사이드바에 '메일함' 추가! */}
           <button onClick={() => { setCurrentMenu('mailbox'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'mailbox' ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Mail size={20} /> 메일함</button>
           
           <button onClick={() => { setCurrentMenu('trash'); setCurrentSubfolder(null); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'trash' ? 'bg-red-500/20 text-red-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Trash2 size={20} /> 휴지통</button>
@@ -403,7 +540,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* 🔥 메일함 전용 헤더 추가! */}
           {currentMenu === 'mailbox' && (
             <div className="flex justify-between items-center w-full max-w-5xl pb-2 md:pt-2">
               <h2 className="text-xl font-bold flex items-center gap-2 text-indigo-400"><Mail size={24}/> 메일함</h2>
@@ -423,32 +559,19 @@ export default function Dashboard() {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 px-6 max-w-7xl mx-auto">
-          {currentMenu === 'home' && currentSubfolder && (
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 mb-2 flex items-center gap-4 bg-gray-900 border border-gray-800 rounded-[2rem] p-4 shadow-xl">
-              <button onClick={() => setCurrentSubfolder(null)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors bg-white/5 px-4 py-3 rounded-2xl"><ArrowLeft size={20} /> <span className="text-sm font-bold">카테고리로 나가기</span></button>
-              <h2 className="text-2xl font-bold flex items-center gap-2 text-white"><FolderOpen className="text-blue-400"/> {currentSubfolder.name}</h2>
-            </div>
-          )}
-
-          {currentMenu === 'home' && filter !== '전체' && filter !== '★즐겨찾기' && !currentSubfolder && !isSelectMode && (
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 space-y-2 mb-2">
-              {subfolders.filter(sf => sf.category_id === categories.find(c => c.name === filter)?.id).map(sf => (
-                <div key={sf.id} onClick={() => setCurrentSubfolder(sf)} className="flex items-center justify-between bg-gray-900/50 hover:bg-gray-800 border border-gray-800 rounded-2xl p-4 cursor-pointer transition-all group shadow-sm">
-                  <div className="flex items-center gap-3"><Folder className="text-blue-400 w-5 h-5" /><span className="font-bold text-gray-200">{sf.name}</span></div>
-                  <button onClick={(e) => handleDeleteSubfolder(e, sf.id)} className="text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1" title="폴더 삭제"><Trash2 size={16} /></button>
-                </div>
-              ))}
-            </div>
-          )}
-
           {displayedItems.map(item => {
             const isSelected = selectedItems.includes(item.id);
+            // 🔥 해당 아이템의 현재 슬라이드 인덱스 가져오기
+            const currentCarouselIndex = carouselIndices[item.id] || 0;
+            // 🔥 이미지 목록이 있는지 확인
+            const hasImages = item.item_images && item.item_images.length > 0;
+            const currentImage = hasImages ? item.item_images[currentCarouselIndex]?.image_url : null;
+            const imagesCount = hasImages ? item.item_images.length : 0;
+
             return (
               <div 
                 key={item.id} 
                 onClick={() => handleCardClick(item)} 
-                // 🔥 h-full을 제거하여, 이미지 없는 줄은 자기 내용물 높이만큼만 작아지게 합니다.
-                // 대신 flex-col을 유지하여 줄 안에서 늘어난 공간은 활용할 수 있게 합니다.
                 className={`border rounded-3xl p-6 shadow-xl relative group transition-all flex flex-col ${
                   currentMenu === 'trash' 
                     ? 'bg-red-950/20 border-red-900/30 opacity-70 hover:opacity-100 cursor-default' 
@@ -457,42 +580,82 @@ export default function Dashboard() {
                       : 'bg-gray-900 border-gray-800 hover:border-white/20 cursor-pointer'
                 }`}
               >
+                {(currentMenu === 'home' || currentMenu === 'mailbox') && isSelectMode && ( <div className="absolute top-5 left-5 z-10">{isSelected ? <CheckCircle2 className="text-blue-500 bg-black rounded-full" size={24} /> : <Circle className="text-gray-600 hover:text-white" size={24} />}</div> )}
+                {currentMenu === 'home' && !isSelectMode && ( <button onClick={(e) => toggleFavorite(e, item)} className="absolute top-5 right-5 text-gray-600 hover:text-yellow-400 transition-colors z-10"><Star size={22} fill={item.is_favorite ? "currentColor" : "none"} className={item.is_favorite ? "text-yellow-400" : ""} /></button> )}
                 
-                {/* 상단 뱃지 및 날짜 영역 */}
+                {currentMenu === 'mailbox' && !isSelectMode && ( <div className="absolute top-5 right-5 text-indigo-400/30 z-10"><Mail size={22} /></div> )}
+                
+                {currentMenu === 'trash' && (
+                  <div className="absolute top-5 right-5 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={(e) => handleRestore(e, item.id)} className="p-2 bg-blue-500/20 text-blue-400 rounded-full hover:bg-blue-500/40 transition-colors" title="복구하기"><ArchiveRestore size={18} /></button>
+                    <button onClick={(e) => handleHardDelete(e, item.id)} className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500/40 transition-colors" title="영구 삭제"><Trash2 size={18} /></button>
+                  </div>
+                )}
+                
                 <div className={`mb-4 flex items-center gap-2 ${isSelectMode && (currentMenu === 'home' || currentMenu === 'mailbox') ? 'ml-8' : ''}`}>
                   {item.category_id && <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">{categories.find(c => c.id === item.category_id)?.name}</span>}
                   {!item.category_id && <span className="text-[10px] font-bold tracking-widest uppercase text-indigo-400 bg-indigo-400/10 px-3 py-1 rounded-full">수신됨</span>}
                   <div className="text-[9px] text-gray-600 font-mono">{new Date(item.created_at).toLocaleDateString()}</div>
                 </div>
 
-                {/* 이미지 영역 */}
-                {item.image_url && ( 
-                  <img 
-                    src={item.image_url} 
-                    className="w-full h-48 object-cover rounded-2xl mb-4 border border-gray-800 transition-opacity cursor-zoom-in hover:opacity-90" 
-                    alt="uploaded" 
-                    onClick={(e) => { e.stopPropagation(); setZoomedImage(item.image_url); }} 
-                  /> 
+                {/* 🔥 이미지 슬라이드 UI 탑재! */}
+                {hasImages && (
+                  <div className="relative group/carousel w-full h-48 rounded-2xl mb-4 border border-gray-800 overflow-hidden">
+                    {/* 현재 사진 */}
+                    <img 
+                      src={currentImage} 
+                      className={`w-full h-full object-cover transition-opacity ${currentMenu === 'home' && !isSelectMode ? 'cursor-zoom-in hover:opacity-90' : ''}`} 
+                      alt={`uploaded ${currentCarouselIndex + 1}`} 
+                      onClick={(e) => { if(currentMenu === 'home' && !isSelectMode){ e.stopPropagation(); setZoomedImage(currentImage); } }} 
+                    />
+                    
+                    {/* 🔥 2장 이상일 때만 화살표와 인디케이터 표시 */}
+                    {imagesCount > 1 && (
+                      <>
+                        {/* 왼쪽 화살표 */}
+                        <button 
+                          onClick={(e) => changeCarouselIndex(e, item.id, -1)} 
+                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full opacity-0 group-hover/carousel:opacity-100 transition-opacity"
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+                        
+                        {/* 오른쪽 화살표 */}
+                        <button 
+                          onClick={(e) => changeCarouselIndex(e, item.id, 1)} 
+                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full opacity-0 group-hover/carousel:opacity-100 transition-opacity"
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                        
+                        {/* 숫자 인디케이터 (예: 1 / 3) */}
+                        <div className="absolute bottom-2 right-3 bg-black/60 text-white text-[10px] px-2.5 py-1 rounded-full font-mono font-bold tracking-tight">
+                          {currentCarouselIndex + 1} / {imagesCount}
+                        </div>
+                        
+                        {/* 동그라미 인디케이터들 */}
+                        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5">
+                          {item.item_images.map((_, index) => (
+                            <div key={index} className={`w-1.5 h-1.5 rounded-full transition-all ${index === currentCarouselIndex ? 'bg-white scale-110' : 'bg-white/40'}`}></div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 )}
 
-                {/* 제목 영역 */}
                 <h3 className={`text-xl font-bold mb-2 flex items-center gap-2 ${currentMenu === 'trash' ? 'text-gray-400 line-through' : ''}`}>
                   <span className="truncate">{item.title}</span>
                   {item.url && currentMenu === 'home' && !isSelectMode && (
-                    <div className="flex items-center gap-2 ml-1 shrink-0">
-                      <a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()}><ExternalLink size={18} className="text-gray-500 hover:text-white transition-colors" /></a>
-                      <button onClick={(e) => handleCopyUrl(e, item.url)}><Copy size={18} className="text-gray-500 hover:text-blue-400 transition-colors" /></button>
-                    </div>
+                    <div className="flex items-center gap-2 ml-1 shrink-0"><a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()}><ExternalLink size={18} className="text-gray-500 hover:text-white transition-colors" /></a><button onClick={(e) => handleCopyUrl(e, item.url)}><Copy size={18} className="text-gray-500 hover:text-blue-400 transition-colors" /></button></div>
                   )}
                 </h3>
-
-                {/* 본문 텍스트 영역: 더 많은 내용을 보여주되, 공간이 부족하면 페이드아웃 */}
+                {item.login_id && currentMenu === 'home' && <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-1"><Lock size={10}/> 계정 정보 포함됨</div>}
+                
                 {item.content && (
                   <div 
                     className="mt-4 overflow-hidden"
                     style={{
-                      // 🔥 줄 수를 제한하지 않고, 카드가 늘어나면 늘어나는 대로 내용을 더 보여줍니다.
-                      // 최대 높이를 넉넉하게(예: 12줄 정도) 잡아서 카드가 너무 무한정 길어지는 것만 방지합니다.
                       maxHeight: '16rem', 
                       WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
                       maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)'
@@ -502,13 +665,6 @@ export default function Dashboard() {
                       {item.content}
                     </p>
                   </div>
-                )}
-                
-                {/* 별점/아이콘 버튼들은 하단에 고정 */}
-                {currentMenu === 'home' && !isSelectMode && ( 
-                  <button onClick={(e) => toggleFavorite(e, item)} className="absolute top-5 right-5 text-gray-600 hover:text-yellow-400 transition-colors z-10">
-                    <Star size={22} fill={item.is_favorite ? "currentColor" : "none"} className={item.is_favorite ? "text-yellow-400" : ""} />
-                  </button> 
                 )}
               </div>
             );
@@ -542,13 +698,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 모달창 코드 생략 없이 기존과 동일 (추가, 상세, 일괄이동 등) */}
-      {/* ... 아래 기존 모달 코드들을 그대로 살려두시면 됩니다! ... */}
-
-      {/* 모달 1: 정보 입력 창 */}
+      {/* 모달 1: 정보 입력 창 (다중 업로드 UI) */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 w-full max-w-md rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto no-scrollbar">
+          <div className="bg-gray-900 w-full max-w-lg rounded-[2.5rem] p-8 border border-white/10 shadow-2xl my-8">
             <div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-bold">{addStep === 'choice' ? '무엇을 기록할까요?' : '정보 입력'}</h2><button onClick={() => setIsModalOpen(false)}><X size={24} /></button></div>
             {addStep === 'choice' ? (
               <div className="grid grid-cols-1 gap-4">
@@ -558,7 +711,7 @@ export default function Dashboard() {
                 </button>
                 <button onClick={() => setAddStep('photo')} className="flex items-center gap-4 p-6 bg-white/5 border border-white/5 rounded-3xl hover:bg-white/10 transition-all text-left group">
                   <div className="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform"><ImageIcon size={24} /></div>
-                  <div><div className="font-bold text-lg">사진 및 스크린샷</div><div className="text-sm text-gray-500">이미지 파일 업로드</div></div>
+                  <div><div className="font-bold text-lg">사진 및 스크린샷</div><div className="text-sm text-gray-500">이미지 파일 다중 업로드</div></div>
                 </button>
                 <button onClick={() => setAddStep('memo')} className="flex items-center gap-4 p-6 bg-white/5 border border-white/5 rounded-3xl hover:bg-white/10 transition-all text-left group">
                   <div className="w-12 h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform"><FileText size={24} /></div>
@@ -569,10 +722,35 @@ export default function Dashboard() {
               <form onSubmit={handleAddItem} className="space-y-4 text-left">
                 <button type="button" onClick={() => setAddStep('choice')} className="text-sm text-gray-500 hover:text-white mb-2">← 뒤로가기</button>
                 <select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white focus:border-white/50 outline-none transition-colors" value={newItem.category_id} onChange={e => setNewItem({...newItem, category_id: e.target.value})}><option value="" disabled>카테고리 선택</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-                <input required placeholder="제목을 입력하세요" className="w-full bg-black border border-gray-800 rounded-xl p-4 text-lg font-bold text-white" value={newItem.title} onChange={e => setNewItem({...newItem, title: e.target.value})} />
+                
+                {/* 제목 칸: 사진 타입일 때만 (선택) */}
+                <input required placeholder={`제목을 입력하세요 ${(addStep === 'photo' || newItemImages.length > 0) ? '(선택)' : ''}`} className="w-full bg-black border border-gray-800 rounded-xl p-4 text-lg font-bold text-white" value={newItem.title} onChange={e => setNewItem({...newItem, title: e.target.value})} />
+                
                 {addStep === 'url' && ( <div className="space-y-3"><input required placeholder="naver.com" className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.url} onChange={e => setNewItem({...newItem, url: e.target.value})} /><div className="grid grid-cols-2 gap-2"><input placeholder="ID (선택)" className="bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.login_id} onChange={e => setNewItem({...newItem, login_id: e.target.value})} /><input placeholder="PW (선택)" className="bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.login_pw} onChange={e => setNewItem({...newItem, login_pw: e.target.value})} /></div></div> )}
-                {addStep === 'photo' && ( <div className="border-2 border-dashed border-gray-800 rounded-2xl p-8 text-center bg-black/30">{newItem.image_url ? ( <div className="relative inline-block"><img src={newItem.image_url} className="h-32 rounded-xl border border-white/10" /><button onClick={() => setNewItem({...newItem, image_url: ''})} className="absolute -top-3 -right-3 bg-red-500 rounded-full p-1.5"><X size={14} /></button></div> ) : ( <label className="cursor-pointer flex flex-col items-center gap-3"><ImageIcon size={24} className="text-gray-400" /><span className="text-sm text-gray-400">{uploading ? '업로드 중...' : '터치하여 사진 선택'}</span><input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} /></label> )}</div> )}
-                {addStep === 'memo' && ( <textarea required placeholder="내용을 자유롭게 적어주세요" className="w-full bg-black border border-gray-800 rounded-xl p-4 h-40 text-sm leading-relaxed text-white" value={newItem.content} onChange={e => setNewItem({...newItem, content: e.target.value})} /> )}
+                
+                {/* 🔥 다중 사진 업로드 UI 탑재! */}
+                {(addStep === 'photo' || newItemImages.length > 0) && ( 
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      {newItemImages.map((imgUrl, index) => (
+                        <div key={index} className="relative group rounded-xl overflow-hidden border border-white/10 aspect-square">
+                          <img src={imgUrl} className="w-full h-full object-cover" alt={`preview ${index + 1}`} />
+                          <button type="button" onClick={() => handleDeleteNewImage(index)} className="absolute top-1.5 right-1.5 bg-red-500/80 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X size={12} /></button>
+                        </div>
+                      ))}
+                      {uploading && <div className="aspect-square bg-white/5 rounded-xl flex items-center justify-center text-gray-500 text-xs border border-white/10">로딩...</div>}
+                      <label className="cursor-pointer aspect-square bg-white/5 rounded-xl flex flex-col items-center justify-center border border-dashed border-gray-800 hover:border-gray-600 transition-colors group">
+                        <Plus size={24} className="text-gray-600 group-hover:text-gray-400" />
+                        <span className="text-[11px] text-gray-600 mt-1.5 group-hover:text-gray-400">사진 추가</span>
+                        <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} disabled={uploading} />
+                      </label>
+                    </div>
+                  </div>
+                )}
+                
+                {/* 메모 칸: 사진이나 메모 타입일 때 표시 */}
+                {(addStep === 'photo' || addStep === 'memo' || newItemImages.length > 0) && ( <textarea required placeholder="내용을 자유롭게 적어주세요" className={`w-full bg-black border border-gray-800 rounded-xl p-4 text-sm leading-relaxed text-white ${addStep === 'memo' ? 'h-60' : 'h-32'}`} value={newItem.content} onChange={e => setNewItem({...newItem, content: e.target.value})} /> )}
+                
                 <button type="submit" className="w-full bg-white text-black font-extrabold p-5 rounded-2xl active:scale-95 transition-all mt-4" disabled={uploading}>기록 완료</button>
               </form>
             )}
@@ -580,17 +758,15 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 모달 2: 정보 상세 / 수정 창 */}
+      {/* 모달 2: 정보 상세 / 수정 창 (다중 사진 관리) */}
       {isDetailModalOpen && editingItem && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[80] flex items-center justify-center p-4">
-          <div className="bg-gray-900 w-full max-w-md rounded-[2.5rem] p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh] text-left">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[80] flex items-center justify-center p-4 overflow-y-auto no-scrollbar">
+          <div className="bg-gray-900 w-full max-w-lg rounded-[2.5rem] p-8 border border-white/10 shadow-2xl my-8">
             <div className="flex justify-between items-start mb-6">
-              <div><div className="flex items-center gap-2 text-gray-500 text-xs mb-1"><Calendar size={12} /> <span>{formatDate(editingItem.created_at)}</span></div><h2 className="text-2xl font-bold">정보 수정 / 이동</h2></div>
+              <div><div className="flex Pension center gap-2 text-gray-500 text-xs mb-1"><Calendar size={12} /> <span>{formatDate(editingItem.created_at)}</span></div><h2 className="text-2xl font-bold">정보 수정 / 이동</h2></div>
               <button onClick={() => setIsDetailModalOpen(false)}><X size={24} /></button>
             </div>
-            
-            <form onSubmit={handleUpdateItem} className="space-y-4">
-              {/* 공통: 상위 카테고리 및 폴더 위치 */}
+            <form onSubmit={handleUpdateItem} className="space-y-4 text-left">
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="text-xs text-gray-500 ml-1">상위 카테고리</label>
@@ -607,30 +783,34 @@ export default function Dashboard() {
                   </select>
                 </div>
               </div>
-
-              {/* 제목: 이미지 타입일 때만 (선택) 표시하고 필수(required) 해제 */}
+              
+              {/* 제목: 사진 타입일 때만 (선택) */}
               <div className="space-y-1">
                 <label className="text-xs text-gray-500 ml-1">제목 {editingItem.type === 'image' && <span className="text-gray-600">(선택)</span>}</label>
                 <input required={editingItem.type !== 'image'} className="w-full bg-black border border-gray-800 rounded-xl p-3 font-bold text-white" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} />
               </div>
-
-              {/* 이미지 칸: '링크(URL)' 타입이거나 '이미지' 타입일 때만 표시 */}
-              {(editingItem.type === 'image' || editingItem.type === 'link') && (
-                <div className="relative group mt-2">
-                  {editingItem.image_url ? (
-                    <img src={editingItem.image_url} className="w-full h-40 object-cover rounded-xl border border-gray-800" />
-                  ) : (
-                    editingItem.type === 'image' && (
-                      <div className="w-full h-40 border-2 border-dashed border-gray-800 rounded-xl flex items-center justify-center bg-black/30">
-                        <span className="text-sm text-gray-500">이미지 없음</span>
+              
+              {/* 🔥 상세 모달 다중 사진 관리 UI 탑재! */}
+              {(editingItem.type === 'image') && ( 
+                <div className="space-y-1 mt-3">
+                  <label className="text-xs text-gray-500 ml-1">사진 목록 ({editingItemImages.length}장)</label>
+                  <div className="grid grid-cols-4 gap-3 border border-gray-800 p-3 rounded-2xl bg-black/30">
+                    {editingItemImages.map((img, index) => (
+                      <div key={index} className="relative group rounded-lg overflow-hidden border border-white/5 aspect-square">
+                        <img src={img.image_url} className="w-full h-full object-cover" alt={`preview ${index + 1}`} />
+                        <button type="button" onClick={() => handleDeleteEditingImage(index)} className="absolute top-1.5 right-1.5 bg-red-500/80 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} /></button>
+                        <div className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded font-mono">{index + 1}</div>
                       </div>
-                    )
-                  )}
-                  <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-all rounded-xl"><span className="text-xs font-bold">사진 교체/추가</span><input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} /></label>
+                    ))}
+                    {uploading && <div className="aspect-square bg-white/5 rounded-lg flex items-center justify-center text-gray-500 text-xs border border-white/5">로딩...</div>}
+                    <label className="cursor-pointer aspect-square bg-white/5 rounded-lg flex flex-col items-center justify-center border border-dashed border-gray-800 hover:border-gray-600 transition-colors group">
+                      <Plus size={20} className="text-gray-600 group-hover:text-gray-400" />
+                      <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} disabled={uploading} />
+                    </label>
+                  </div>
                 </div>
               )}
 
-              {/* URL 및 ID/PW: 오직 '링크(URL)' 타입일 때만 표시 */}
               {editingItem.type === 'link' && (
                 <>
                   <div className="space-y-1">
@@ -649,8 +829,7 @@ export default function Dashboard() {
                   </div>
                 </>
               )}
-
-              {/* 메모: 메모나 이메일 타입이면 세로 길이를 2배(h-64)로 쫙 늘려줌 */}
+              
               <div className="space-y-1">
                 <label className="text-xs text-gray-500 ml-1">메모 내용</label>
                 <textarea className={`w-full bg-black border border-gray-800 rounded-xl p-3 text-sm leading-relaxed text-white ${(editingItem.type === 'memo' || editingItem.type === 'email') ? 'h-64' : 'h-32'}`} value={editingItem.content || ''} onChange={e => setEditingItem({...editingItem, content: e.target.value})} />
@@ -681,9 +860,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 모달 4, 5, 6, 이미지 줌 생략 (기존 코드 그대로) */}
-      {/* ... 아래 기존 모달 코드들을 그대로 살려두시면 됩니다! ... */}
-      
       {/* 모달 4: 새 폴더 생성 창 */}
       {isSubfolderModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">

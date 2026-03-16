@@ -47,7 +47,26 @@ export default function Dashboard() {
     title: '', category_id: '', subfolder_id: null, type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: ''
   });
 
-  useEffect(() => { fetchInitialData(); }, []);
+  // 데이터 불러오기
+  useEffect(() => { 
+    fetchInitialData(); 
+  }, []);
+
+  // 🔥 핵심: 모바일 웹 클리퍼 파라미터 낚아채기
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sharedUrl = params.get('url');
+    
+    if (sharedUrl) {
+      // url 파라미터가 감지되면 즉시 모달을 띄우고 주소를 입력합니다.
+      setIsModalOpen(true); 
+      setAddStep('url');    
+      setNewItem(prev => ({ ...prev, url: sharedUrl }));
+      
+      // 파라미터를 사용한 뒤에는 주소창을 원래대로 깔끔하게 지워줍니다. (무한 반복 방지)
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   async function fetchInitialData() {
     const { data: catData } = await supabase.from('categories').select('*').order('display_order');
@@ -308,29 +327,16 @@ export default function Dashboard() {
         </div>
 
         <nav className="flex-1 px-4 space-y-2 mt-4">
-          <button 
-            onClick={() => { setCurrentMenu('home'); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'home' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
-          >
-            <Home size={20} /> 메인
-          </button>
-          <button 
-            onClick={() => { setCurrentMenu('trash'); setCurrentSubfolder(null); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'trash' ? 'bg-red-500/20 text-red-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
-          >
-            <Trash2 size={20} /> 휴지통
-          </button>
+          <button onClick={() => { setCurrentMenu('home'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'home' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Home size={20} /> 메인</button>
+          <button onClick={() => { setCurrentMenu('trash'); setCurrentSubfolder(null); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'trash' ? 'bg-red-500/20 text-red-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Trash2 size={20} /> 휴지통</button>
         </nav>
 
         <div className="p-4 border-t border-white/5">
-          <button onClick={() => { setIsCategoryModalOpen(true); setIsSidebarOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-gray-400 hover:bg-white/5 hover:text-white transition-all">
-            <Settings size={20} /> 카테고리 및 설정
-          </button>
+          <button onClick={() => { setIsCategoryModalOpen(true); setIsSidebarOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-gray-400 hover:bg-white/5 hover:text-white transition-all"><Settings size={20} /> 카테고리 및 설정</button>
         </div>
       </aside>
 
       <main className="flex-1 h-full overflow-y-auto relative bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] pb-32 no-scrollbar">
-        
         <header className="sticky top-0 z-30 flex flex-col items-center pt-4 md:pt-8 pb-4 bg-[#020617]/80 backdrop-blur-2xl border-b border-white/5 shadow-2xl w-full px-4">
           <div className="flex justify-between items-center w-full max-w-5xl mb-4 md:hidden">
             <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-white/5 rounded-xl border border-white/10 text-white hover:bg-white/10 transition-colors"><Menu size={24} /></button>
@@ -447,7 +453,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 🔥 모달 1: 정보 입력 창 */}
+      {/* 모달 1: 정보 입력 창 */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 w-full max-w-md rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
@@ -482,7 +488,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 🔥 모달 2: 정보 상세 / 수정 창 */}
+      {/* 모달 2: 정보 상세 / 수정 창 */}
       {isDetailModalOpen && editingItem && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[80] flex items-center justify-center p-4">
           <div className="bg-gray-900 w-full max-w-md rounded-[2.5rem] p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh] text-left">
@@ -543,7 +549,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 🔥 모달 3: 일괄 이동 창 */}
+      {/* 모달 3: 일괄 이동 창 */}
       {isBatchMoveModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[110] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
@@ -559,7 +565,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 🔥 모달 4: 새 폴더 생성 창 */}
+      {/* 모달 4: 새 폴더 생성 창 */}
       {isSubfolderModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
@@ -576,7 +582,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 🔥 모달 5: 인증 (PIN 입력) 창 */}
+      {/* 모달 5: 인증 (PIN 입력) 창 */}
       {authModal.open && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
@@ -593,7 +599,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 🔥 모달 6: 카테고리 관리 창 */}
+      {/* 모달 6: 카테고리 관리 창 */}
       {isCategoryModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[60] flex items-center justify-center p-4 text-left">
           <div className="bg-gray-900 w-full max-w-md rounded-3xl p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]">

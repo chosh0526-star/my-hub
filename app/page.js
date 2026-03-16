@@ -113,13 +113,20 @@ export default function Dashboard() {
     return trimmedUrl;
   };
 
+  // 1. 기존 데이터 클릭 시 자동 보정 로직 추가
   const handleCardClick = (item) => {
     if (currentMenu === 'trash') return;
     if (isSelectMode) {
       if (selectedItems.includes(item.id)) setSelectedItems(selectedItems.filter(id => id !== item.id));
       else setSelectedItems([...selectedItems, item.id]);
     } else {
-      setEditingItem({ ...item });
+      // 🔥 핵심: 과거에 '링크'로 잘못 저장된 메모 카드를 찰떡같이 알아보고 '메모'로 바꿔줍니다.
+      let correctedType = item.type;
+      if (correctedType === 'link' && !item.url && !item.login_id && !item.login_pw && item.content) {
+        correctedType = 'memo';
+      }
+      
+      setEditingItem({ ...item, type: correctedType });
       setIsDetailModalOpen(true);
     }
   };
@@ -138,9 +145,22 @@ export default function Dashboard() {
     else { setIsDetailModalOpen(false); fetchInitialData(); }
   };
 
+  // 2. 새로운 데이터 저장 시 타입 명확화
   async function handleAddItem(e) {
     e.preventDefault();
-    const finalItem = { ...newItem, url: fixUrl(newItem.url), title: newItem.title || (addStep === 'photo' ? '새 사진' : addStep === 'memo' ? '새 메모' : '새 링크') };
+    
+    // 🔥 저장할 때 사용자가 선택한 종류(addStep)에 따라 꼬리표(type)를 확실하게 달아줍니다!
+    let exactType = 'link';
+    if (addStep === 'photo') exactType = 'image';
+    if (addStep === 'memo') exactType = 'memo';
+
+    const finalItem = { 
+      ...newItem, 
+      type: exactType, 
+      url: fixUrl(newItem.url), 
+      title: newItem.title || (addStep === 'photo' ? '새 사진' : addStep === 'memo' ? '새 메모' : '새 링크') 
+    };
+    
     const { error } = await supabase.from('dashboard_items').insert([finalItem]);
     if (error) alert('저장 실패: ' + error.message);
     else { setIsModalOpen(false); fetchInitialData(); }

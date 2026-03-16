@@ -2,23 +2,23 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-// 🔥 CheckCircle2, Circle, CheckSquare, MoveRight, ArrowDownUp 아이콘 등 대거 추가!
-import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Calendar, Search, Star, ChevronUp, ChevronDown, FolderOpen, FolderPlus, ArrowLeft, Folder, CheckCircle2, Circle, CheckSquare, MoveRight, ArrowDownUp } from 'lucide-react';
+// 🔥 Menu, ArchiveRestore, AlertOctagon 등 사이드바와 휴지통을 위한 아이콘 대거 추가!
+import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Calendar, Search, Star, ChevronUp, ChevronDown, FolderOpen, FolderPlus, ArrowLeft, Folder, CheckCircle2, Circle, CheckSquare, MoveRight, ArrowDownUp, Menu, Home, ArchiveRestore, AlertOctagon } from 'lucide-react';
 
 export default function Dashboard() {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [subfolders, setSubfolders] = useState([]); 
+  
+  // 🔥 사이드바 및 탭 관리 상태
+  const [currentMenu, setCurrentMenu] = useState('home'); // 'home' | 'trash'
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // 모바일용 사이드바 토글
+
   const [filter, setFilter] = useState('전체');
   const [currentSubfolder, setCurrentSubfolder] = useState(null); 
-
-  // 🔥 3. 정렬 상태 (최신순 'desc', 과거순 'asc')
   const [sortOrder, setSortOrder] = useState('desc');
-  
-  // 🔥 4. 더 보기 상태 (초기 보여줄 개수 20개)
   const [visibleCount, setVisibleCount] = useState(20);
 
-  // 🔥 1. 다중 선택 모드 상태
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const [isBatchMoveModalOpen, setIsBatchMoveModalOpen] = useState(false);
@@ -62,7 +62,6 @@ export default function Dashboard() {
       setNewItem(prev => ({ ...prev, category_id: catData[0].id }));
     }
 
-    // 일단 DB에서 다 가져와서 프론트에서 최적화 처리 (더 보기 기능용)
     const { data: itemData } = await supabase.from('dashboard_items').select('*');
     setItems(itemData || []);
   }
@@ -81,10 +80,7 @@ export default function Dashboard() {
     setIsModalOpen(true);
     const currentCategory = categories.find(c => c.name === filter);
     const defaultCategoryId = currentCategory ? currentCategory.id : (categories.length > 0 ? categories[0].id : '');
-
-    setNewItem({
-      title: '', category_id: defaultCategoryId, subfolder_id: null, type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: ''
-    });
+    setNewItem({ title: '', category_id: defaultCategoryId, subfolder_id: null, type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: '' });
   };
 
   const formatDate = (dateString) => {
@@ -99,8 +95,10 @@ export default function Dashboard() {
     return trimmedUrl;
   };
 
-  // 🔥 선택 모드일 때와 아닐 때의 클릭 동작 분리
   const handleCardClick = (item) => {
+    // 휴지통 모드일 때는 카드 열람/수정 방지
+    if (currentMenu === 'trash') return;
+
     if (isSelectMode) {
       if (selectedItems.includes(item.id)) setSelectedItems(selectedItems.filter(id => id !== item.id));
       else setSelectedItems([...selectedItems, item.id]);
@@ -138,7 +136,7 @@ export default function Dashboard() {
       if (authModal.type === 'view') {
         setFilter(authModal.target.name);
         setCurrentSubfolder(null); 
-        setVisibleCount(20); // 탭 이동 시 더보기 초기화
+        setVisibleCount(20); 
       } else if (authModal.type === 'delete') {
         await supabase.from('categories').delete().eq('id', authModal.target.id);
         fetchInitialData();
@@ -148,9 +146,10 @@ export default function Dashboard() {
   };
 
   const handleCategoryClick = (cat) => {
+    setCurrentMenu('home');
     setCurrentSubfolder(null); 
     setVisibleCount(20);
-    setIsSelectMode(false); setSelectedItems([]); // 탭 이동 시 선택모드 해제
+    setIsSelectMode(false); setSelectedItems([]); 
     if (cat.is_private) {
       setAuthModal({ open: true, type: 'view', target: cat });
       setAuthInput('');
@@ -219,224 +218,292 @@ export default function Dashboard() {
     setUploading(false);
   }
 
-  async function handleDelete(id) {
-    if (confirm('정말 삭제하시겠습니까?')) {
-      await supabase.from('dashboard_items').delete().eq('id', id);
-      setIsDetailModalOpen(false); fetchInitialData();
-    }
-  }
-
   const handleCopyUrl = (e, url) => {
     e.stopPropagation();
     navigator.clipboard.writeText(url).then(() => alert('URL이 클립보드에 복사되었습니다! 📋')).catch(err => alert('복사에 실패했습니다.'));
   };
 
-  // 🔥 1. 다중 일괄 삭제 기능
+  // 🔥 휴지통으로 이동 (소프트 딜리트)
+  async function handleSoftDelete(id) {
+    if (confirm('휴지통으로 이동하시겠습니까?')) {
+      await supabase.from('dashboard_items').update({ is_deleted: true }).eq('id', id);
+      setIsDetailModalOpen(false); fetchInitialData();
+    }
+  }
+
+  // 🔥 휴지통에서 복구
+  async function handleRestore(e, id) {
+    e.stopPropagation();
+    await supabase.from('dashboard_items').update({ is_deleted: false }).eq('id', id);
+    fetchInitialData();
+  }
+
+  // 🔥 영구 삭제 (하드 딜리트)
+  async function handleHardDelete(e, id) {
+    e.stopPropagation();
+    if (confirm('영구 삭제하면 다시는 복구할 수 없습니다. 삭제하시겠습니까?')) {
+      await supabase.from('dashboard_items').delete().eq('id', id);
+      fetchInitialData();
+    }
+  }
+
+  // 🔥 다중 일괄 휴지통 이동
   const handleBatchDelete = async () => {
     if (selectedItems.length === 0) return;
-    if (confirm(`선택한 ${selectedItems.length}개의 항목을 정말 삭제하시겠습니까?`)) {
-      await supabase.from('dashboard_items').delete().in('id', selectedItems);
+    if (confirm(`선택한 ${selectedItems.length}개의 항목을 휴지통으로 보내시겠습니까?`)) {
+      await supabase.from('dashboard_items').update({ is_deleted: true }).in('id', selectedItems);
       setIsSelectMode(false); setSelectedItems([]); fetchInitialData();
     }
   };
 
-  // 🔥 1. 다중 일괄 이동 기능
+  // 🔥 휴지통 비우기
+  const handleEmptyTrash = async () => {
+    if (confirm('휴지통에 있는 모든 항목을 영구 삭제하시겠습니까? (복구 불가)')) {
+      await supabase.from('dashboard_items').delete().eq('is_deleted', true);
+      fetchInitialData();
+    }
+  };
+
   const handleBatchMoveSubmit = async (e) => {
     e.preventDefault();
     if (selectedItems.length === 0) return;
-    
-    // 카테고리만 선택하고 폴더는 선택 안 한 경우 null 처리
     const finalSubId = batchTargetSub === '' ? null : batchTargetSub;
-    
-    await supabase.from('dashboard_items')
-      .update({ category_id: batchTargetCat, subfolder_id: finalSubId })
-      .in('id', selectedItems);
-      
+    await supabase.from('dashboard_items').update({ category_id: batchTargetCat, subfolder_id: finalSubId }).in('id', selectedItems);
     setIsBatchMoveModalOpen(false); setIsSelectMode(false); setSelectedItems([]); fetchInitialData();
   };
 
   // 🔥 필터링 & 정렬 & 더보기 로직 결합
   let processedItems = [...items];
 
-  // (1) 검색 및 카테고리 필터링
-  processedItems = processedItems.filter(item => {
-    const itemCat = categories.find(c => c.id === item.category_id);
+  if (currentMenu === 'trash') {
+    // 휴지통 뷰: 삭제된 항목만 검색어 적용해서 보여줌
     const lowerSearch = searchTerm.toLowerCase();
-    const matchesSearch = item.title?.toLowerCase().includes(lowerSearch) || item.content?.toLowerCase().includes(lowerSearch);
-    
-    if (filter === '★즐겨찾기') return item.is_favorite && matchesSearch;
-    if (filter === '전체') return (!itemCat?.is_private && itemCat?.name !== '비밀창고') && matchesSearch;
-    if (itemCat?.name === filter) {
-      if (currentSubfolder) return item.subfolder_id === currentSubfolder.id && matchesSearch;
-      else return item.subfolder_id === null && matchesSearch;
-    }
-    return false;
-  });
+    processedItems = processedItems.filter(item => 
+      item.is_deleted && 
+      (item.title?.toLowerCase().includes(lowerSearch) || item.content?.toLowerCase().includes(lowerSearch))
+    );
+  } else {
+    // 홈 뷰: 삭제되지 않은 항목만 기존 카테고리/폴더 필터 적용
+    processedItems = processedItems.filter(item => {
+      if (item.is_deleted) return false;
 
-  // (2) 3번 기능: 최신순/과거순 정렬
+      const itemCat = categories.find(c => c.id === item.category_id);
+      const lowerSearch = searchTerm.toLowerCase();
+      const matchesSearch = item.title?.toLowerCase().includes(lowerSearch) || item.content?.toLowerCase().includes(lowerSearch);
+      
+      if (filter === '★즐겨찾기') return item.is_favorite && matchesSearch;
+      if (filter === '전체') return (!itemCat?.is_private && itemCat?.name !== '비밀창고') && matchesSearch;
+      if (itemCat?.name === filter) {
+        if (currentSubfolder) return item.subfolder_id === currentSubfolder.id && matchesSearch;
+        else return item.subfolder_id === null && matchesSearch;
+      }
+      return false;
+    });
+  }
+
+  // 정렬
   processedItems.sort((a, b) => {
     const dateA = new Date(a.created_at).getTime();
     const dateB = new Date(b.created_at).getTime();
     return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
   });
 
-  // (3) 4번 기능: 더 보기 (현재 보여줄 개수만큼 자르기)
   const totalItemsCount = processedItems.length;
   const displayedItems = processedItems.slice(0, visibleCount);
 
   return (
-    <div className="min-h-screen bg-[#020617] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] text-gray-100 pb-32 font-sans text-center selection:bg-blue-500/30 relative">
+    <div className="flex h-screen bg-[#020617] text-gray-100 font-sans selection:bg-blue-500/30 overflow-hidden">
       
-      <header className="sticky top-0 z-30 flex flex-col items-center pt-14 pb-4 bg-[#020617]/80 backdrop-blur-2xl border-b border-white/5 shadow-2xl w-full">
-        <h1 onClick={handleTitleClick} className="text-6xl md:text-7xl font-black mb-2 px-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-500 drop-shadow-[0_10px_20px_rgba(255,255,255,0.15)] cursor-pointer select-none active:scale-95 transition-transform">
-          The Archive
-        </h1>
-        
-        <div className="flex justify-center items-center gap-2 w-full px-4 overflow-x-auto no-scrollbar pt-4 pb-6 -mb-4">
-          <div className="flex gap-2 shrink-0">
-            <button onClick={() => { setFilter('전체'); setCurrentSubfolder(null); setVisibleCount(20); }} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>전체</button>
-            <button onClick={() => { setFilter('★즐겨찾기'); setCurrentSubfolder(null); setVisibleCount(20); }} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '★즐겨찾기' ? 'bg-yellow-400 text-black font-bold shadow-[0_0_15px_rgba(250,204,21,0.4)] scale-105' : 'bg-white/5 text-yellow-500 backdrop-blur-lg border border-yellow-500/20 hover:bg-yellow-400/20'}`}>★ 즐겨찾기</button>
-            
-            {categories.filter(cat => cat.name !== '비밀창고').map(cat => (
-              <button key={cat.id} onClick={() => handleCategoryClick(cat)} className={`px-4 py-1.5 text-sm rounded-full transition-all flex items-center gap-1.5 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>
-                {cat.icon} {cat.name} {cat.is_private && <Lock size={12} />}
-              </button>
-            ))}
-          </div>
-          
-          {/* 🔥 우측 아이콘 버튼 그룹 (정렬, 다중선택, 설정) */}
-          <div className="flex gap-1 shrink-0 bg-white/5 p-1 rounded-full border border-white/10 ml-2">
-            <button 
-              onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')} 
-              className={`p-1.5 rounded-full transition-all ${sortOrder === 'desc' ? 'text-blue-400 bg-blue-500/10' : 'text-purple-400 bg-purple-500/10'}`}
-              title="정렬 변경"
-            >
-              <ArrowDownUp size={16} className={sortOrder === 'asc' ? 'rotate-180 transition-transform' : 'transition-transform'} />
-            </button>
-            <button 
-              onClick={() => { setIsSelectMode(!isSelectMode); setSelectedItems([]); }} 
-              className={`p-1.5 rounded-full transition-all ${isSelectMode ? 'bg-white text-black' : 'text-gray-400 hover:text-white'}`}
-              title="다중 선택 모드"
-            >
-              <CheckSquare size={16} />
-            </button>
-            <button onClick={() => setIsCategoryModalOpen(true)} className="p-1.5 rounded-full text-gray-400 hover:text-white transition-all"><Settings size={16} /></button>
-          </div>
+      {/* 📱 모바일용 햄버거 메뉴 버튼 (상단 좌측) */}
+      <button 
+        onClick={() => setIsSidebarOpen(true)}
+        className="md:hidden fixed top-5 left-5 z-40 p-2 bg-white/10 rounded-xl backdrop-blur-md border border-white/10 text-white"
+      >
+        <Menu size={24} />
+      </button>
+
+      {/* 🖥️ 사이드바 (Sidebar) */}
+      <aside className={`fixed md:relative z-50 w-64 h-full bg-[#020617]/95 backdrop-blur-3xl border-r border-white/5 shadow-2xl transition-transform transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} flex flex-col`}>
+        <div className="p-6 pt-14 md:pt-8 flex justify-between items-center">
+          <h2 onClick={handleTitleClick} className="text-2xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-500 cursor-pointer">The Archive</h2>
+          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-gray-400 hover:text-white"><X size={24}/></button>
         </div>
 
-        <div className="w-full max-w-md px-4 mt-4">
-          <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-white transition-colors" size={18} />
-            <input type="text" placeholder="제목이나 메모를 검색하세요" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:bg-white/10 focus:border-white/20 outline-none transition-all backdrop-blur-xl placeholder:text-gray-600" />
-            {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"><X size={16} /></button>}
-          </div>
-        </div>
-      </header>
-
-      <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 text-left px-4 max-w-7xl mx-auto">
-        
-        {/* 폴더 진입했을 때 바 */}
-        {currentSubfolder && (
-          <div className="col-span-1 md:col-span-2 lg:col-span-3 mb-2 flex items-center gap-4 bg-gray-900 border border-gray-800 rounded-[2rem] p-4 shadow-xl">
-            <button onClick={() => setCurrentSubfolder(null)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors bg-white/5 px-4 py-3 rounded-2xl">
-              <ArrowLeft size={20} /> <span className="text-sm font-bold">카테고리로 나가기</span>
-            </button>
-            <h2 className="text-2xl font-bold flex items-center gap-2 text-white"><FolderOpen className="text-blue-400"/> {currentSubfolder.name}</h2>
-          </div>
-        )}
-
-        {/* 얇은 리스트형 폴더 */}
-        {filter !== '전체' && filter !== '★즐겨찾기' && !currentSubfolder && !isSelectMode && (
-          <div className="col-span-1 md:col-span-2 lg:col-span-3 space-y-2 mb-2">
-            {subfolders.filter(sf => sf.category_id === categories.find(c => c.name === filter)?.id).map(sf => (
-              <div key={sf.id} onClick={() => setCurrentSubfolder(sf)} className="flex items-center justify-between bg-gray-900/50 hover:bg-gray-800 border border-gray-800 rounded-2xl p-4 cursor-pointer transition-all group shadow-sm">
-                <div className="flex items-center gap-3"><Folder className="text-blue-400 w-5 h-5" /><span className="font-bold text-gray-200">{sf.name}</span></div>
-                <button onClick={(e) => handleDeleteSubfolder(e, sf.id)} className="text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1" title="폴더 삭제"><Trash2 size={16} /></button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* 📚 일반 정보 카드들 */}
-        {displayedItems.map(item => {
-          const isSelected = selectedItems.includes(item.id);
-          return (
-            <div 
-              key={item.id} 
-              onClick={() => handleCardClick(item)} 
-              className={`border rounded-3xl p-6 shadow-xl relative group cursor-pointer transition-all ${
-                isSelectMode 
-                  ? (isSelected ? 'bg-blue-900/30 border-blue-500 ring-2 ring-blue-500/50' : 'bg-gray-900/50 border-gray-800 hover:border-white/20 opacity-60 hover:opacity-100')
-                  : 'bg-gray-900 border-gray-800 hover:border-white/20'
-              }`}
-            >
-              {/* 🔥 다중 선택 체크박스 아이콘 표시 */}
-              {isSelectMode && (
-                <div className="absolute top-5 left-5 z-10">
-                  {isSelected ? <CheckCircle2 className="text-blue-500 bg-black rounded-full" size={24} /> : <Circle className="text-gray-600 hover:text-white" size={24} />}
-                </div>
-              )}
-
-              {/* 기존 즐겨찾기 버튼 (선택 모드 아닐때만) */}
-              {!isSelectMode && (
-                <button onClick={(e) => toggleFavorite(e, item)} className="absolute top-5 right-5 text-gray-600 hover:text-yellow-400 transition-colors z-10">
-                  <Star size={22} fill={item.is_favorite ? "currentColor" : "none"} className={item.is_favorite ? "text-yellow-400" : ""} />
-                </button>
-              )}
-              
-              <div className={`mb-4 flex items-center gap-2 ${isSelectMode ? 'ml-8' : ''}`}>
-                <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">
-                  {categories.find(c => c.id === item.category_id)?.name}
-                </span>
-                {item.subfolder_id && !currentSubfolder && (
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-purple-400 bg-purple-400/10 px-3 py-1 rounded-full flex items-center gap-1">
-                    <Folder size={10}/> {subfolders.find(s => s.id === item.subfolder_id)?.name}
-                  </span>
-                )}
-                <div className="text-[9px] text-gray-600 font-mono">{new Date(item.created_at).toLocaleDateString()}</div>
-              </div>
-
-              {item.image_url && (
-                <img src={item.image_url} className={`w-full h-48 object-cover rounded-2xl mb-4 border border-gray-800 transition-opacity ${!isSelectMode && 'cursor-zoom-in hover:opacity-90'}`} alt="uploaded" onClick={(e) => { if(!isSelectMode){ e.stopPropagation(); setZoomedImage(item.image_url); } }} />
-              )}
-              
-              <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
-                <span className="truncate">{item.title}</span>
-                {item.url && !isSelectMode && (
-                  <div className="flex items-center gap-2 ml-1 shrink-0">
-                    <a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()} title="새 창으로 열기"><ExternalLink size={18} className="text-gray-500 hover:text-white transition-colors" /></a>
-                    <button onClick={(e) => handleCopyUrl(e, item.url)} title="URL 복사"><Copy size={18} className="text-gray-500 hover:text-blue-400 transition-colors" /></button>
-                  </div>
-                )}
-              </h3>
-              {item.login_id && <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-1"><Lock size={10}/> 계정 정보 포함됨</div>}
-              {item.content && <p className="text-sm text-gray-400 mt-4 leading-relaxed line-clamp-2">{item.content}</p>}
-            </div>
-          );
-        })}
-      </main>
-
-      {/* 🔥 4. 더 보기 버튼 */}
-      {visibleCount < totalItemsCount && (
-        <div className="flex justify-center mt-8 mb-16">
+        <nav className="flex-1 px-4 space-y-2 mt-4">
           <button 
-            onClick={() => setVisibleCount(prev => prev + 20)} 
-            className="bg-white/5 border border-white/10 text-gray-300 px-8 py-3 rounded-full font-bold hover:bg-white/10 hover:text-white transition-all backdrop-blur-md shadow-lg"
+            onClick={() => { setCurrentMenu('home'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'home' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
           >
-            더 보기 ({visibleCount} / {totalItemsCount})
+            <Home size={20} /> 모든 기록
+          </button>
+          <button 
+            onClick={() => { setCurrentMenu('trash'); setCurrentSubfolder(null); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'trash' ? 'bg-red-500/20 text-red-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+          >
+            <Trash2 size={20} /> 휴지통
+          </button>
+        </nav>
+
+        <div className="p-4 border-t border-white/5">
+          <button onClick={() => { setIsCategoryModalOpen(true); setIsSidebarOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-gray-400 hover:bg-white/5 hover:text-white transition-all">
+            <Settings size={20} /> 카테고리 및 설정
           </button>
         </div>
-      )}
+      </aside>
 
-      {/* 데이터가 없을 때 빈 화면 안내 */}
-      {totalItemsCount === 0 && (
-        <div className="mt-20 text-gray-500">여기는 텅 비어있네요. 기록을 시작해 보세요!</div>
-      )}
+      {/* 📖 메인 콘텐츠 영역 */}
+      <main className="flex-1 h-full overflow-y-auto relative bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] pb-32 no-scrollbar">
+        
+        {/* 상단 헤더 & 컨트롤 바 */}
+        <header className="sticky top-0 z-30 flex flex-col items-center pt-6 md:pt-14 pb-4 bg-[#020617]/80 backdrop-blur-2xl border-b border-white/5 shadow-2xl w-full px-4">
+          
+          {currentMenu === 'home' ? (
+            // 홈 모드 컨트롤러 (카테고리 탭 등)
+            <div className="flex justify-center items-center gap-2 w-full max-w-5xl overflow-x-auto no-scrollbar pb-2">
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => { setFilter('전체'); setCurrentSubfolder(null); setVisibleCount(20); }} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>전체</button>
+                <button onClick={() => { setFilter('★즐겨찾기'); setCurrentSubfolder(null); setVisibleCount(20); }} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '★즐겨찾기' ? 'bg-yellow-400 text-black font-bold shadow-[0_0_15px_rgba(250,204,21,0.4)] scale-105' : 'bg-white/5 text-yellow-500 backdrop-blur-lg border border-yellow-500/20 hover:bg-yellow-400/20'}`}>★ 즐겨찾기</button>
+                
+                {categories.filter(cat => cat.name !== '비밀창고').map(cat => (
+                  <button key={cat.id} onClick={() => handleCategoryClick(cat)} className={`px-4 py-1.5 text-sm rounded-full transition-all flex items-center gap-1.5 ${filter === cat.name ? 'bg-white text-black font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>
+                    {cat.icon} {cat.name} {cat.is_private && <Lock size={12} />}
+                  </button>
+                ))}
+              </div>
+              
+              <div className="flex gap-1 shrink-0 bg-white/5 p-1 rounded-full border border-white/10 ml-2">
+                <button onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')} className={`p-1.5 rounded-full transition-all ${sortOrder === 'desc' ? 'text-blue-400 bg-blue-500/10' : 'text-purple-400 bg-purple-500/10'}`} title="정렬 변경">
+                  <ArrowDownUp size={16} className={sortOrder === 'asc' ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                </button>
+                <button onClick={() => { setIsSelectMode(!isSelectMode); setSelectedItems([]); }} className={`p-1.5 rounded-full transition-all ${isSelectMode ? 'bg-white text-black' : 'text-gray-400 hover:text-white'}`} title="다중 선택 모드">
+                  <CheckSquare size={16} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            // 휴지통 모드 컨트롤러
+            <div className="flex justify-between items-center w-full max-w-5xl pb-2 px-4">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-red-400"><Trash2 size={24}/> 휴지통</h2>
+              <button onClick={handleEmptyTrash} disabled={totalItemsCount === 0} className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20 transition-all font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                <AlertOctagon size={16}/> 휴지통 비우기
+              </button>
+            </div>
+          )}
+
+          {/* 공통 검색창 */}
+          <div className="w-full max-w-5xl mt-2 px-4 md:px-0">
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-white transition-colors" size={18} />
+              <input type="text" placeholder="제목이나 메모를 검색하세요" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:bg-white/10 focus:border-white/20 outline-none transition-all backdrop-blur-xl placeholder:text-gray-600" />
+              {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"><X size={16} /></button>}
+            </div>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 px-6 max-w-7xl mx-auto">
+          
+          {/* 폴더 진입 바 (홈 모드에서만) */}
+          {currentMenu === 'home' && currentSubfolder && (
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 mb-2 flex items-center gap-4 bg-gray-900 border border-gray-800 rounded-[2rem] p-4 shadow-xl">
+              <button onClick={() => setCurrentSubfolder(null)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors bg-white/5 px-4 py-3 rounded-2xl"><ArrowLeft size={20} /> <span className="text-sm font-bold">카테고리로 나가기</span></button>
+              <h2 className="text-2xl font-bold flex items-center gap-2 text-white"><FolderOpen className="text-blue-400"/> {currentSubfolder.name}</h2>
+            </div>
+          )}
+
+          {/* 얇은 리스트형 폴더 (홈 모드에서만) */}
+          {currentMenu === 'home' && filter !== '전체' && filter !== '★즐겨찾기' && !currentSubfolder && !isSelectMode && (
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 space-y-2 mb-2">
+              {subfolders.filter(sf => sf.category_id === categories.find(c => c.name === filter)?.id).map(sf => (
+                <div key={sf.id} onClick={() => setCurrentSubfolder(sf)} className="flex items-center justify-between bg-gray-900/50 hover:bg-gray-800 border border-gray-800 rounded-2xl p-4 cursor-pointer transition-all group shadow-sm">
+                  <div className="flex items-center gap-3"><Folder className="text-blue-400 w-5 h-5" /><span className="font-bold text-gray-200">{sf.name}</span></div>
+                  <button onClick={(e) => handleDeleteSubfolder(e, sf.id)} className="text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1" title="폴더 삭제"><Trash2 size={16} /></button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 📚 정보 카드들 */}
+          {displayedItems.map(item => {
+            const isSelected = selectedItems.includes(item.id);
+            return (
+              <div 
+                key={item.id} 
+                onClick={() => handleCardClick(item)} 
+                className={`border rounded-3xl p-6 shadow-xl relative group transition-all ${
+                  currentMenu === 'trash' 
+                    ? 'bg-red-950/20 border-red-900/30 opacity-70 hover:opacity-100 cursor-default'
+                    : isSelectMode 
+                      ? (isSelected ? 'bg-blue-900/30 border-blue-500 ring-2 ring-blue-500/50 cursor-pointer' : 'bg-gray-900/50 border-gray-800 hover:border-white/20 opacity-60 hover:opacity-100 cursor-pointer')
+                      : 'bg-gray-900 border-gray-800 hover:border-white/20 cursor-pointer'
+                }`}
+              >
+                {/* 다중 선택 체크박스 */}
+                {currentMenu === 'home' && isSelectMode && (
+                  <div className="absolute top-5 left-5 z-10">{isSelected ? <CheckCircle2 className="text-blue-500 bg-black rounded-full" size={24} /> : <Circle className="text-gray-600 hover:text-white" size={24} />}</div>
+                )}
+
+                {/* 휴지통 모드가 아닐 때 즐겨찾기 */}
+                {currentMenu === 'home' && !isSelectMode && (
+                  <button onClick={(e) => toggleFavorite(e, item)} className="absolute top-5 right-5 text-gray-600 hover:text-yellow-400 transition-colors z-10">
+                    <Star size={22} fill={item.is_favorite ? "currentColor" : "none"} className={item.is_favorite ? "text-yellow-400" : ""} />
+                  </button>
+                )}
+
+                {/* 🔥 휴지통 모드 액션 버튼 (복구 & 영구삭제) */}
+                {currentMenu === 'trash' && (
+                  <div className="absolute top-5 right-5 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={(e) => handleRestore(e, item.id)} className="p-2 bg-blue-500/20 text-blue-400 rounded-full hover:bg-blue-500/40 transition-colors" title="복구하기"><ArchiveRestore size={18} /></button>
+                    <button onClick={(e) => handleHardDelete(e, item.id)} className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500/40 transition-colors" title="영구 삭제"><Trash2 size={18} /></button>
+                  </div>
+                )}
+                
+                <div className={`mb-4 flex items-center gap-2 ${isSelectMode && currentMenu === 'home' ? 'ml-8' : ''}`}>
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">{categories.find(c => c.id === item.category_id)?.name}</span>
+                  {item.subfolder_id && !currentSubfolder && (
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-purple-400 bg-purple-400/10 px-3 py-1 rounded-full flex items-center gap-1"><Folder size={10}/> {subfolders.find(s => s.id === item.subfolder_id)?.name}</span>
+                  )}
+                  <div className="text-[9px] text-gray-600 font-mono">{new Date(item.created_at).toLocaleDateString()}</div>
+                </div>
+
+                {item.image_url && (
+                  <img src={item.image_url} className={`w-full h-48 object-cover rounded-2xl mb-4 border border-gray-800 transition-opacity ${currentMenu === 'home' && !isSelectMode ? 'cursor-zoom-in hover:opacity-90' : ''}`} alt="uploaded" onClick={(e) => { if(currentMenu === 'home' && !isSelectMode){ e.stopPropagation(); setZoomedImage(item.image_url); } }} />
+                )}
+                
+                <h3 className={`text-xl font-bold mb-2 flex items-center gap-2 ${currentMenu === 'trash' ? 'text-gray-400 line-through' : ''}`}>
+                  <span className="truncate">{item.title}</span>
+                  {item.url && currentMenu === 'home' && !isSelectMode && (
+                    <div className="flex items-center gap-2 ml-1 shrink-0">
+                      <a href={item.url} target="_blank" onClick={(e) => e.stopPropagation()} title="새 창으로 열기"><ExternalLink size={18} className="text-gray-500 hover:text-white transition-colors" /></a>
+                      <button onClick={(e) => handleCopyUrl(e, item.url)} title="URL 복사"><Copy size={18} className="text-gray-500 hover:text-blue-400 transition-colors" /></button>
+                    </div>
+                  )}
+                </h3>
+                {item.login_id && currentMenu === 'home' && <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-1"><Lock size={10}/> 계정 정보 포함됨</div>}
+                {item.content && <p className={`text-sm mt-4 leading-relaxed line-clamp-2 ${currentMenu === 'trash' ? 'text-gray-600' : 'text-gray-400'}`}>{item.content}</p>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 더 보기 버튼 */}
+        {visibleCount < totalItemsCount && (
+          <div className="flex justify-center mt-8 mb-16">
+            <button onClick={() => setVisibleCount(prev => prev + 20)} className="bg-white/5 border border-white/10 text-gray-300 px-8 py-3 rounded-full font-bold hover:bg-white/10 hover:text-white transition-all backdrop-blur-md shadow-lg">
+              더 보기 ({visibleCount} / {totalItemsCount})
+            </button>
+          </div>
+        )}
+
+        {/* 데이터 없음 안내 */}
+        {totalItemsCount === 0 && (
+          <div className="flex flex-col items-center justify-center mt-32 text-gray-500">
+            {currentMenu === 'trash' ? <><ArchiveRestore size={48} className="mb-4 opacity-20"/> 휴지통이 비어있습니다.</> : <><FolderOpen size={48} className="mb-4 opacity-20"/> 여기는 텅 비어있네요. 기록을 시작해 보세요!</>}
+          </div>
+        )}
+      </main>
 
       {/* --- 플로팅 버튼들 --- */}
-      
-      {/* 평상시: 새 폴더, 새 아이템 버튼 */}
-      {!isSelectMode && (
+      {currentMenu === 'home' && !isSelectMode && (
         <>
           {filter !== '전체' && filter !== '★즐겨찾기' && (
             <button onClick={() => setIsSubfolderModalOpen(true)} className="fixed bottom-28 right-10 w-12 h-12 bg-gray-800 border border-gray-700 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-700 active:scale-95 transition-all z-20 group" title="새 폴더 만들기">
@@ -447,94 +514,45 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* 🔥 다중 선택 모드 시: 하단 액션 바 */}
-      {isSelectMode && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 border border-gray-700 rounded-full px-6 py-4 flex items-center gap-6 shadow-[0_20px_40px_rgba(0,0,0,0.8)] z-50 animate-in slide-in-from-bottom-10 backdrop-blur-xl">
+      {/* 다중 선택 하단 바 */}
+      {currentMenu === 'home' && isSelectMode && (
+        <div className="fixed bottom-8 left-1/2 md:left-[calc(50%+8rem)] -translate-x-1/2 bg-gray-900 border border-gray-700 rounded-full px-6 py-4 flex items-center gap-6 shadow-[0_20px_40px_rgba(0,0,0,0.8)] z-50 animate-in slide-in-from-bottom-10 backdrop-blur-xl">
           <span className="text-white font-bold whitespace-nowrap"><span className="text-blue-400">{selectedItems.length}</span>개 선택됨</span>
           <div className="w-[1px] h-6 bg-gray-700"></div>
-          <button 
-            onClick={() => setIsBatchMoveModalOpen(true)} 
-            disabled={selectedItems.length === 0}
-            className={`flex items-center gap-2 font-bold transition-colors ${selectedItems.length > 0 ? 'text-white hover:text-blue-400' : 'text-gray-600'}`}
-          >
-            <MoveRight size={18} /> 이동
-          </button>
-          <button 
-            onClick={handleBatchDelete} 
-            disabled={selectedItems.length === 0}
-            className={`flex items-center gap-2 font-bold transition-colors ${selectedItems.length > 0 ? 'text-white hover:text-red-500' : 'text-gray-600'}`}
-          >
-            <Trash2 size={18} /> 삭제
-          </button>
+          <button onClick={() => setIsBatchMoveModalOpen(true)} disabled={selectedItems.length === 0} className={`flex items-center gap-2 font-bold transition-colors ${selectedItems.length > 0 ? 'text-white hover:text-blue-400' : 'text-gray-600'}`}><MoveRight size={18} /> 이동</button>
+          <button onClick={handleBatchDelete} disabled={selectedItems.length === 0} className={`flex items-center gap-2 font-bold transition-colors ${selectedItems.length > 0 ? 'text-white hover:text-red-500' : 'text-gray-600'}`}><Trash2 size={18} /> 휴지통으로</button>
           <button onClick={() => { setIsSelectMode(false); setSelectedItems([]); }} className="p-2 bg-white/10 rounded-full text-gray-400 hover:text-white ml-2"><X size={16} /></button>
         </div>
       )}
 
-      {/* 🔥 일괄 이동 모달 */}
+      {/* --- 모달들 --- */}
       {isBatchMoveModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[110] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
             <MoveRight className="text-blue-400 mx-auto mb-6" size={32} />
             <h2 className="text-2xl font-bold mb-2">어디로 옮길까요?</h2>
             <p className="text-gray-500 text-sm mb-6">{selectedItems.length}개의 기록을 선택하셨습니다.</p>
-            
             <form onSubmit={handleBatchMoveSubmit} className="space-y-4 text-left">
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500 ml-1">이동할 카테고리</label>
-                <select required className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={batchTargetCat} onChange={e => { setBatchTargetCat(e.target.value); setBatchTargetSub(''); }}>
-                  <option value="" disabled>카테고리 선택</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              
+              <div className="space-y-1"><label className="text-xs text-gray-500 ml-1">이동할 카테고리</label><select required className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={batchTargetCat} onChange={e => { setBatchTargetCat(e.target.value); setBatchTargetSub(''); }}><option value="" disabled>카테고리 선택</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
               {batchTargetCat && (
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-500 ml-1">세부 폴더 (선택)</label>
-                  <select className="w-full bg-black border border-blue-900/50 rounded-xl p-3 text-sm text-blue-100" value={batchTargetSub} onChange={e => setBatchTargetSub(e.target.value)}>
-                    <option value="">📁 폴더 없이 메인에 두기</option>
-                    {subfolders.filter(sf => sf.category_id === batchTargetCat).map(sf => (
-                      <option key={sf.id} value={sf.id}>{sf.name}</option>
-                    ))}
-                  </select>
-                </div>
+                <div className="space-y-1"><label className="text-xs text-gray-500 ml-1">세부 폴더 (선택)</label><select className="w-full bg-black border border-blue-900/50 rounded-xl p-3 text-sm text-blue-100" value={batchTargetSub} onChange={e => setBatchTargetSub(e.target.value)}><option value="">📁 폴더 없이 메인에 두기</option>{subfolders.filter(sf => sf.category_id === batchTargetCat).map(sf => <option key={sf.id} value={sf.id}>{sf.name}</option>)}</select></div>
               )}
-
-              <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setIsBatchMoveModalOpen(false)} className="flex-1 bg-gray-800 text-gray-300 font-bold p-4 rounded-2xl">취소</button>
-                <button type="submit" className="flex-1 bg-blue-600 text-white font-bold p-4 rounded-2xl">이동하기</button>
-              </div>
+              <div className="flex gap-3 pt-4"><button type="button" onClick={() => setIsBatchMoveModalOpen(false)} className="flex-1 bg-gray-800 text-gray-300 font-bold p-4 rounded-2xl">취소</button><button type="submit" className="flex-1 bg-blue-600 text-white font-bold p-4 rounded-2xl">이동하기</button></div>
             </form>
           </div>
         </div>
       )}
 
-      {/* 기존 모달들 (세부 폴더, 카드 작성, 상세 보기, 인증 등) 은 전부 그대로 유지됨 */}
+      {/* (세부 폴더, 카드 작성, 휴지통용 수정창, 인증 모달 생략 - 기존 유지) */}
       {isSubfolderModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">
-          <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
-            <FolderPlus className="text-blue-400 mx-auto mb-6" size={32} />
-            <h2 className="text-2xl font-bold mb-6">새 폴더 만들기</h2>
-            <form onSubmit={handleCreateSubfolder} className="space-y-4">
-              <input autoFocus required type="text" placeholder="폴더 이름을 입력하세요" className="w-full bg-black border border-gray-800 rounded-2xl p-4 text-center text-xl outline-none text-white focus:border-blue-500/50 transition-colors" value={newSubfolderName} onChange={(e) => setNewSubfolderName(e.target.value)} />
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setIsSubfolderModalOpen(false)} className="flex-1 bg-gray-800 text-gray-300 font-bold p-4 rounded-2xl">취소</button>
-                <button type="submit" className="flex-1 bg-white text-black font-bold p-4 rounded-2xl">생성하기</button>
-              </div>
-            </form>
-          </div>
+          <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl"><FolderPlus className="text-blue-400 mx-auto mb-6" size={32} /><h2 className="text-2xl font-bold mb-6">새 폴더 만들기</h2><form onSubmit={handleCreateSubfolder} className="space-y-4"><input autoFocus required type="text" placeholder="폴더 이름을 입력하세요" className="w-full bg-black border border-gray-800 rounded-2xl p-4 text-center text-xl outline-none text-white focus:border-blue-500/50 transition-colors" value={newSubfolderName} onChange={(e) => setNewSubfolderName(e.target.value)} /><div className="flex gap-3 pt-2"><button type="button" onClick={() => setIsSubfolderModalOpen(false)} className="flex-1 bg-gray-800 text-gray-300 font-bold p-4 rounded-2xl">취소</button><button type="submit" className="flex-1 bg-white text-black font-bold p-4 rounded-2xl">생성하기</button></div></form></div>
         </div>
       )}
 
       {authModal.open && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">
-          <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
-            <ShieldCheck className="text-blue-400 mx-auto mb-6" size={32} />
-            <h2 className="text-2xl font-bold mb-2">{authModal.target.icon} {authModal.target.name}</h2>
-            <form onSubmit={handleAuthConfirm} className="space-y-4">
-              <input autoFocus type="text" autoComplete="one-time-code" autoCapitalize="none" autoCorrect="off" spellCheck="false" placeholder="••••" className="w-full bg-black border border-gray-800 rounded-2xl p-4 text-center text-xl tracking-[0.5em] outline-none text-white [-webkit-text-security:disc]" value={authInput} onChange={(e) => setAuthInput(e.target.value)} />
-              <div className="flex gap-3 pt-2"><button type="button" onClick={() => setAuthModal({ open: false, type: '', target: null })} className="flex-1 bg-gray-800 text-gray-300 font-bold p-4 rounded-2xl">취소</button><button type="submit" className="flex-1 bg-white text-black font-bold p-4 rounded-2xl">확인</button></div>
-            </form>
-          </div>
+          <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl"><ShieldCheck className="text-blue-400 mx-auto mb-6" size={32} /><h2 className="text-2xl font-bold mb-2">{authModal.target.icon} {authModal.target.name}</h2><form onSubmit={handleAuthConfirm} className="space-y-4"><input autoFocus type="text" autoComplete="one-time-code" autoCapitalize="none" autoCorrect="off" spellCheck="false" placeholder="••••" className="w-full bg-black border border-gray-800 rounded-2xl p-4 text-center text-xl tracking-[0.5em] outline-none text-white [-webkit-text-security:disc]" value={authInput} onChange={(e) => setAuthInput(e.target.value)} /><div className="flex gap-3 pt-2"><button type="button" onClick={() => setAuthModal({ open: false, type: '', target: null })} className="flex-1 bg-gray-800 text-gray-300 font-bold p-4 rounded-2xl">취소</button><button type="submit" className="flex-1 bg-white text-black font-bold p-4 rounded-2xl">확인</button></div></form></div>
         </div>
       )}
 
@@ -571,27 +589,13 @@ export default function Dashboard() {
               <button onClick={() => setIsDetailModalOpen(false)}><X size={24} /></button>
             </div>
             <form onSubmit={handleUpdateItem} className="space-y-4">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-500 ml-1">상위 카테고리</label>
-                  <select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.category_id} onChange={e => setEditingItem({...editingItem, category_id: e.target.value, subfolder_id: null})}>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-500 ml-1">세부 폴더 위치</label>
-                  <select className="w-full bg-black border border-blue-900/50 rounded-xl p-3 text-sm text-blue-100" value={editingItem.subfolder_id || ''} onChange={e => setEditingItem({...editingItem, subfolder_id: e.target.value === '' ? null : e.target.value})}>
-                    <option value="">📁 지정 안 함 (메인)</option>
-                    {subfolders.filter(sf => sf.category_id === editingItem.category_id).map(sf => <option key={sf.id} value={sf.id}>{sf.name}</option>)}
-                  </select>
-                </div>
-              </div>
+              <div className="grid grid-cols-2 gap-2"><div className="space-y-1"><label className="text-xs text-gray-500 ml-1">상위 카테고리</label><select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.category_id} onChange={e => setEditingItem({...editingItem, category_id: e.target.value, subfolder_id: null})}>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div className="space-y-1"><label className="text-xs text-gray-500 ml-1">세부 폴더 위치</label><select className="w-full bg-black border border-blue-900/50 rounded-xl p-3 text-sm text-blue-100" value={editingItem.subfolder_id || ''} onChange={e => setEditingItem({...editingItem, subfolder_id: e.target.value === '' ? null : e.target.value})}><option value="">📁 지정 안 함 (메인)</option>{subfolders.filter(sf => sf.category_id === editingItem.category_id).map(sf => <option key={sf.id} value={sf.id}>{sf.name}</option>)}</select></div></div>
               <div className="space-y-1"><label className="text-xs text-gray-500 ml-1">제목</label><input required className="w-full bg-black border border-gray-800 rounded-xl p-3 font-bold text-white" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} /></div>
               {editingItem.image_url && ( <div className="relative group"><img src={editingItem.image_url} className="w-full h-40 object-cover rounded-xl border border-gray-800" /><label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-all rounded-xl"><span className="text-xs font-bold">사진 교체</span><input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} /></label></div> )}
               <div className="space-y-1"><label className="text-xs text-gray-500 ml-1">사이트 주소 (URL)</label><input placeholder="naver.com" className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.url || ''} onChange={e => setEditingItem({...editingItem, url: e.target.value})} /></div>
               <div className="grid grid-cols-2 gap-2"><div className="space-y-1"><label className="text-xs text-gray-500 ml-1">ID</label><input className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.login_id || ''} onChange={e => setEditingItem({...editingItem, login_id: e.target.value})} /></div><div className="space-y-1"><label className="text-xs text-gray-500 ml-1">PW</label><input className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.login_pw || ''} onChange={e => setEditingItem({...editingItem, login_pw: e.target.value})} /></div></div>
               <div className="space-y-1"><label className="text-xs text-gray-500 ml-1">메모</label><textarea className="w-full bg-black border border-gray-800 rounded-xl p-3 h-32 text-sm leading-relaxed text-white" value={editingItem.content || ''} onChange={e => setEditingItem({...editingItem, content: e.target.value})} /></div>
-              <div className="flex gap-2 pt-4"><button type="button" onClick={() => handleDelete(editingItem.id)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500/20 transition-all"><Trash2 size={20} /></button><button type="submit" className="flex-1 bg-white text-black font-extrabold p-4 rounded-2xl active:scale-95 transition-all">저장하기</button></div>
+              <div className="flex gap-2 pt-4"><button type="button" onClick={() => handleSoftDelete(editingItem.id)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500/20 transition-all" title="휴지통으로 이동"><Trash2 size={20} /></button><button type="submit" className="flex-1 bg-white text-black font-extrabold p-4 rounded-2xl active:scale-95 transition-all">저장하기</button></div>
             </form>
           </div>
         </div>
@@ -603,7 +607,6 @@ export default function Dashboard() {
             <div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-bold">카테고리 관리</h2><button onClick={() => {setIsCategoryModalOpen(false); setEditingCategory(null);}}><X size={24} /></button></div>
             <form onSubmit={handleSaveCategory} className="mb-8 space-y-4">
               <div className="flex gap-2"><input name="icon" defaultValue={editingCategory?.icon} placeholder="📁" className="w-20 bg-black border border-gray-800 rounded-xl p-3 text-center text-white" /><input name="name" required defaultValue={editingCategory?.name} placeholder="카테고리 이름" className="flex-1 bg-black border border-gray-800 rounded-xl p-3 text-white" /></div>
-              <p className="text-[10px] text-gray-500 -mt-2 ml-1">* 이모지를 비워두면 기본 아이콘(📁)으로 설정됩니다.</p>
               <div className="p-4 bg-black/50 rounded-2xl border border-gray-800 space-y-3"><label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" name="is_private" defaultChecked={editingCategory?.is_private} className="w-5 h-5 rounded bg-black text-white" /><span className="text-sm font-medium text-gray-300">비밀 카테고리</span></label><input name="secret_key" type="text" autoComplete="one-time-code" autoCapitalize="none" autoCorrect="off" spellCheck="false" defaultValue={editingCategory?.password} placeholder="PIN 입력 (팝업방지)" className="w-full bg-black border border-gray-800 rounded-xl p-2.5 text-sm text-white [-webkit-text-security:disc]" /></div>
               <button type="submit" className="w-full bg-white text-black font-bold p-3 rounded-xl">저장</button>
             </form>

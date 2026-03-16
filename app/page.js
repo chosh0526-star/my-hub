@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Calendar, Search, Star, ChevronUp, ChevronDown, FolderOpen, FolderPlus, ArrowLeft, Folder, CheckCircle2, Circle, CheckSquare, MoveRight, ArrowDownUp, Menu, Home, ArchiveRestore, AlertOctagon } from 'lucide-react';
+// 🔥 Mail 아이콘이 추가되었습니다!
+import { Copy, Eye, EyeOff, ExternalLink, Plus, X, Trash2, Image as ImageIcon, Settings, Edit2, Lock, ShieldCheck, Link, FileText, Calendar, Search, Star, ChevronUp, ChevronDown, FolderOpen, FolderPlus, ArrowLeft, Folder, CheckCircle2, Circle, CheckSquare, MoveRight, ArrowDownUp, Menu, Home, ArchiveRestore, AlertOctagon, Mail } from 'lucide-react';
 
 export default function Dashboard() {
   const [items, setItems] = useState([]);
@@ -47,28 +48,23 @@ export default function Dashboard() {
     title: '', category_id: '', subfolder_id: null, type: 'link', url: '', login_id: '', login_pw: '', content: '', image_url: ''
   });
 
-  // 데이터 불러오기
   useEffect(() => { 
     fetchInitialData(); 
   }, []);
 
-  // 🔥 핵심: 모바일 웹 클리퍼 파라미터(URL + 제목) 낚아채기
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sharedUrl = params.get('url');
-    const sharedTitle = params.get('title'); // 🌟 제목 파라미터 추가!
+    const sharedTitle = params.get('title'); 
     
     if (sharedUrl) {
       setIsModalOpen(true); 
       setAddStep('url');    
-      
-      // 🌟 주소와 함께, 제목이 있으면 제목 칸에 쏙 넣어줍니다!
       setNewItem(prev => ({ 
         ...prev, 
         url: sharedUrl,
         title: sharedTitle ? sharedTitle : '' 
       }));
-      
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -283,10 +279,11 @@ export default function Dashboard() {
     e.preventDefault();
     if (selectedItems.length === 0) return;
     const finalSubId = batchTargetSub === '' ? null : batchTargetSub;
-    await supabase.from('dashboard_items').update({ category_id: batchTargetCat, subfolder_id: finalSubId }).in('id', selectedItems);
+    await supabase.from('dashboard_items').update({ category_id: batchTargetCat, subfolder_id: finalSubId, type: 'memo' }).in('id', selectedItems);
     setIsBatchMoveModalOpen(false); setIsSelectMode(false); setSelectedItems([]); fetchInitialData();
   };
 
+  // 🔥 핵심 로직: 사이드바 메뉴별 필터링 (메일함 격리)
   let processedItems = [...items];
 
   if (currentMenu === 'trash') {
@@ -295,9 +292,17 @@ export default function Dashboard() {
       item.is_deleted && 
       (item.title?.toLowerCase().includes(lowerSearch) || item.content?.toLowerCase().includes(lowerSearch))
     );
+  } else if (currentMenu === 'mailbox') {
+    // 🔥 메일함: 타입이 'email'인 것만 보여줍니다!
+    const lowerSearch = searchTerm.toLowerCase();
+    processedItems = processedItems.filter(item => 
+      !item.is_deleted && item.type === 'email' &&
+      (item.title?.toLowerCase().includes(lowerSearch) || item.content?.toLowerCase().includes(lowerSearch))
+    );
   } else {
     processedItems = processedItems.filter(item => {
-      if (item.is_deleted) return false;
+      // 🔥 홈 화면: 타입이 'email'인 것은 철저하게 숨깁니다!
+      if (item.is_deleted || item.type === 'email') return false;
 
       const itemCat = categories.find(c => c.id === item.category_id);
       const lowerSearch = searchTerm.toLowerCase();
@@ -333,6 +338,10 @@ export default function Dashboard() {
 
         <nav className="flex-1 px-4 space-y-2 mt-4">
           <button onClick={() => { setCurrentMenu('home'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'home' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Home size={20} /> 메인</button>
+          
+          {/* 🔥 사이드바에 '메일함' 추가! */}
+          <button onClick={() => { setCurrentMenu('mailbox'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'mailbox' ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Mail size={20} /> 메일함</button>
+          
           <button onClick={() => { setCurrentMenu('trash'); setCurrentSubfolder(null); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'trash' ? 'bg-red-500/20 text-red-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Trash2 size={20} /> 휴지통</button>
         </nav>
 
@@ -349,7 +358,7 @@ export default function Dashboard() {
             <div className="w-10"></div> 
           </div>
 
-          {currentMenu === 'home' ? (
+          {currentMenu === 'home' && (
             <div className="flex justify-start md:justify-center items-center gap-2 w-[calc(100%+2rem)] md:w-full max-w-5xl overflow-x-auto no-scrollbar py-3 px-4 md:px-0 -mx-4 md:mx-0">
               <div className="flex gap-2 shrink-0">
                 <button onClick={() => { setFilter('전체'); setCurrentSubfolder(null); setVisibleCount(20); }} className={`px-4 py-1.5 text-sm rounded-full transition-all ${filter === '전체' ? 'bg-white text-black font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105' : 'bg-white/5 text-gray-400 backdrop-blur-lg border border-white/10 hover:bg-white/10'}`}>전체</button>
@@ -365,10 +374,22 @@ export default function Dashboard() {
                 <button onClick={() => { setIsSelectMode(!isSelectMode); setSelectedItems([]); }} className={`p-1.5 rounded-full transition-all ${isSelectMode ? 'bg-white text-black' : 'text-gray-400 hover:text-white'}`} title="다중 선택 모드"><CheckSquare size={16} /></button>
               </div>
             </div>
-          ) : (
+          )}
+          
+          {currentMenu === 'trash' && (
             <div className="flex justify-between items-center w-full max-w-5xl pb-2 md:pt-2">
               <h2 className="text-xl font-bold flex items-center gap-2 text-red-400"><Trash2 size={24}/> 휴지통</h2>
               <button onClick={handleEmptyTrash} disabled={totalItemsCount === 0} className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20 transition-all font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"><AlertOctagon size={16}/> 휴지통 비우기</button>
+            </div>
+          )}
+
+          {/* 🔥 메일함 전용 헤더 추가! */}
+          {currentMenu === 'mailbox' && (
+            <div className="flex justify-between items-center w-full max-w-5xl pb-2 md:pt-2">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-indigo-400"><Mail size={24}/> 메일함</h2>
+              <div className="flex gap-1 shrink-0 bg-white/5 p-1 rounded-full border border-white/10">
+                <button onClick={() => { setIsSelectMode(!isSelectMode); setSelectedItems([]); }} className={`px-4 py-1.5 text-sm rounded-full transition-all ${isSelectMode ? 'bg-white text-black font-bold' : 'text-gray-400 hover:text-white'}`} title="분류 모드">정리하기</button>
+              </div>
             </div>
           )}
 
@@ -404,8 +425,12 @@ export default function Dashboard() {
             const isSelected = selectedItems.includes(item.id);
             return (
               <div key={item.id} onClick={() => handleCardClick(item)} className={`border rounded-3xl p-6 shadow-xl relative group transition-all ${currentMenu === 'trash' ? 'bg-red-950/20 border-red-900/30 opacity-70 hover:opacity-100 cursor-default' : isSelectMode ? (isSelected ? 'bg-blue-900/30 border-blue-500 ring-2 ring-blue-500/50 cursor-pointer' : 'bg-gray-900/50 border-gray-800 hover:border-white/20 opacity-60 hover:opacity-100 cursor-pointer') : 'bg-gray-900 border-gray-800 hover:border-white/20 cursor-pointer'}`}>
-                {currentMenu === 'home' && isSelectMode && ( <div className="absolute top-5 left-5 z-10">{isSelected ? <CheckCircle2 className="text-blue-500 bg-black rounded-full" size={24} /> : <Circle className="text-gray-600 hover:text-white" size={24} />}</div> )}
+                {(currentMenu === 'home' || currentMenu === 'mailbox') && isSelectMode && ( <div className="absolute top-5 left-5 z-10">{isSelected ? <CheckCircle2 className="text-blue-500 bg-black rounded-full" size={24} /> : <Circle className="text-gray-600 hover:text-white" size={24} />}</div> )}
                 {currentMenu === 'home' && !isSelectMode && ( <button onClick={(e) => toggleFavorite(e, item)} className="absolute top-5 right-5 text-gray-600 hover:text-yellow-400 transition-colors z-10"><Star size={22} fill={item.is_favorite ? "currentColor" : "none"} className={item.is_favorite ? "text-yellow-400" : ""} /></button> )}
+                
+                {/* 메일함 카드 UI */}
+                {currentMenu === 'mailbox' && !isSelectMode && ( <div className="absolute top-5 right-5 text-indigo-400/30 z-10"><Mail size={22} /></div> )}
+                
                 {currentMenu === 'trash' && (
                   <div className="absolute top-5 right-5 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={(e) => handleRestore(e, item.id)} className="p-2 bg-blue-500/20 text-blue-400 rounded-full hover:bg-blue-500/40 transition-colors" title="복구하기"><ArchiveRestore size={18} /></button>
@@ -413,8 +438,10 @@ export default function Dashboard() {
                   </div>
                 )}
                 
-                <div className={`mb-4 flex items-center gap-2 ${isSelectMode && currentMenu === 'home' ? 'ml-8' : ''}`}>
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">{categories.find(c => c.id === item.category_id)?.name}</span>
+                <div className={`mb-4 flex items-center gap-2 ${isSelectMode && (currentMenu === 'home' || currentMenu === 'mailbox') ? 'ml-8' : ''}`}>
+                  {item.category_id && <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">{categories.find(c => c.id === item.category_id)?.name}</span>}
+                  {!item.category_id && <span className="text-[10px] font-bold tracking-widest uppercase text-indigo-400 bg-indigo-400/10 px-3 py-1 rounded-full">수신됨</span>}
+                  
                   {item.subfolder_id && !currentSubfolder && ( <span className="text-[10px] font-bold tracking-widest uppercase text-purple-400 bg-purple-400/10 px-3 py-1 rounded-full flex items-center gap-1"><Folder size={10}/> {subfolders.find(s => s.id === item.subfolder_id)?.name}</span> )}
                   <div className="text-[9px] text-gray-600 font-mono">{new Date(item.created_at).toLocaleDateString()}</div>
                 </div>
@@ -436,7 +463,9 @@ export default function Dashboard() {
         {visibleCount < totalItemsCount && ( <div className="flex justify-center mt-8 mb-16"><button onClick={() => setVisibleCount(prev => prev + 20)} className="bg-white/5 border border-white/10 text-gray-300 px-8 py-3 rounded-full font-bold hover:bg-white/10 hover:text-white transition-all backdrop-blur-md shadow-lg">더 보기 ({visibleCount} / {totalItemsCount})</button></div> )}
         {totalItemsCount === 0 && (
           <div className="flex flex-col items-center justify-center mt-32 text-gray-500">
-            {currentMenu === 'trash' ? <><ArchiveRestore size={48} className="mb-4 opacity-20"/> 휴지통이 비어있습니다.</> : <><FolderOpen size={48} className="mb-4 opacity-20"/> 여기는 텅 비어있네요. 기록을 시작해 보세요!</>}
+            {currentMenu === 'trash' ? <><ArchiveRestore size={48} className="mb-4 opacity-20"/> 휴지통이 비어있습니다.</> : 
+             currentMenu === 'mailbox' ? <><Mail size={48} className="mb-4 opacity-20 text-indigo-500"/> 새로 도착한 메일이 없습니다.</> :
+             <><FolderOpen size={48} className="mb-4 opacity-20"/> 여기는 텅 비어있네요. 기록을 시작해 보세요!</>}
           </div>
         )}
       </main>
@@ -448,15 +477,18 @@ export default function Dashboard() {
         </>
       )}
 
-      {currentMenu === 'home' && isSelectMode && (
+      {(currentMenu === 'home' || currentMenu === 'mailbox') && isSelectMode && (
         <div className="fixed bottom-8 left-1/2 md:left-[calc(50%+8rem)] -translate-x-1/2 bg-gray-900 border border-gray-700 rounded-full px-6 py-4 flex items-center gap-6 shadow-[0_20px_40px_rgba(0,0,0,0.8)] z-50 animate-in slide-in-from-bottom-10 backdrop-blur-xl">
           <span className="text-white font-bold whitespace-nowrap"><span className="text-blue-400">{selectedItems.length}</span>개 선택됨</span>
           <div className="w-[1px] h-6 bg-gray-700"></div>
-          <button onClick={() => setIsBatchMoveModalOpen(true)} disabled={selectedItems.length === 0} className={`flex items-center gap-2 font-bold transition-colors ${selectedItems.length > 0 ? 'text-white hover:text-blue-400' : 'text-gray-600'}`}><MoveRight size={18} /> 이동</button>
+          <button onClick={() => setIsBatchMoveModalOpen(true)} disabled={selectedItems.length === 0} className={`flex items-center gap-2 font-bold transition-colors ${selectedItems.length > 0 ? 'text-white hover:text-blue-400' : 'text-gray-600'}`}><MoveRight size={18} /> 카테고리로 정리</button>
           <button onClick={handleBatchDelete} disabled={selectedItems.length === 0} className={`flex items-center gap-2 font-bold transition-colors ${selectedItems.length > 0 ? 'text-white hover:text-red-500' : 'text-gray-600'}`}><Trash2 size={18} /> 휴지통으로</button>
           <button onClick={() => { setIsSelectMode(false); setSelectedItems([]); }} className="p-2 bg-white/10 rounded-full text-gray-400 hover:text-white ml-2"><X size={16} /></button>
         </div>
       )}
+
+      {/* 모달창 코드 생략 없이 기존과 동일 (추가, 상세, 일괄이동 등) */}
+      {/* ... 아래 기존 모달 코드들을 그대로 살려두시면 됩니다! ... */}
 
       {/* 모달 1: 정보 입력 창 */}
       {isModalOpen && (
@@ -505,7 +537,8 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="text-xs text-gray-500 ml-1">상위 카테고리</label>
-                  <select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.category_id} onChange={e => setEditingItem({...editingItem, category_id: e.target.value, subfolder_id: null})}>
+                  <select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={editingItem.category_id || ''} onChange={e => setEditingItem({...editingItem, category_id: e.target.value, subfolder_id: null})}>
+                    <option value="" disabled>분류 필요</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
@@ -570,6 +603,9 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* 모달 4, 5, 6, 이미지 줌 생략 (기존 코드 그대로) */}
+      {/* ... 아래 기존 모달 코드들을 그대로 살려두시면 됩니다! ... */}
+      
       {/* 모달 4: 새 폴더 생성 창 */}
       {isSubfolderModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">

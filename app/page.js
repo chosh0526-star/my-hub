@@ -484,6 +484,27 @@ export default function Dashboard() {
           </div>
         </header>
 
+        {/* 🔥 [복구완료] 제가 실수로 날려먹었던 세부 폴더 UI를 다시 소환합니다! */}
+        {currentMenu === 'home' && currentSubfolder && (
+          <div className="max-w-7xl mx-auto px-6 mt-8 mb-2">
+            <div className="flex items-center gap-4 bg-gray-900 border border-gray-800 rounded-[2rem] p-4 shadow-xl">
+              <button onClick={() => setCurrentSubfolder(null)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors bg-white/5 px-4 py-3 rounded-2xl"><ArrowLeft size={20} /> <span className="text-sm font-bold">카테고리로 나가기</span></button>
+              <h2 className="text-2xl font-bold flex items-center gap-2 text-white"><FolderOpen className="text-blue-400"/> {currentSubfolder.name}</h2>
+            </div>
+          </div>
+        )}
+
+        {currentMenu === 'home' && filter !== '전체' && filter !== '★즐겨찾기' && !currentSubfolder && !isSelectMode && (
+          <div className="max-w-7xl mx-auto px-6 mt-8 mb-4 space-y-2">
+            {subfolders.filter(sf => sf.category_id === categories.find(c => c.name === filter)?.id).map(sf => (
+              <div key={sf.id} onClick={() => setCurrentSubfolder(sf)} className="flex items-center justify-between bg-gray-900/50 hover:bg-gray-800 border border-gray-800 rounded-2xl p-4 cursor-pointer transition-all group shadow-sm">
+                <div className="flex items-center gap-3"><Folder className="text-blue-400 w-5 h-5" /><span className="font-bold text-gray-200">{sf.name}</span></div>
+                <button onClick={(e) => handleDeleteSubfolder(e, sf.id)} className="text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1" title="폴더 삭제"><Trash2 size={16} /></button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* 카드 그리드 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 px-6 max-w-7xl mx-auto">
           {displayedItems.map(item => {

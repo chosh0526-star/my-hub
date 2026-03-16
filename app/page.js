@@ -187,28 +187,40 @@ export default function Dashboard() {
     e.preventDefault();
     
     const updatedUrl = fixUrl(editingItem.url);
+
+    // 🔥 [버그 해결] Supabase가 알 수 없는 불순물(item_images 등)을 떼어내고, 진짜 컬럼 데이터만 골라냅니다!
+    const updatePayload = {
+      title: editingItem.title,
+      category_id: editingItem.category_id,
+      subfolder_id: editingItem.subfolder_id,
+      type: editingItem.type,
+      url: updatedUrl,
+      login_id: editingItem.login_id,
+      login_pw: editingItem.login_pw,
+      content: editingItem.content
+    };
+
     const { data: updatedItem, error: itemError } = await supabase
       .from('dashboard_items')
-      .update({ ...editingItem, url: updatedUrl })
+      .update(updatePayload) // <--- 정제된 깔끔한 데이터만 전송!
       .eq('id', editingItem.id)
       .select()
       .single();
 
     if (itemError) {
+      console.error(itemError);
       alert('게시물 수정 실패!');
       return;
     }
 
-    // 🔥 이미지 목록 업데이트 (조금 복잡합니다!)
-    // 1. 기존 이미지 삭제 (item_id에 해당하는 모든 이미지를 지우고 다시 넣는 방식이 가장 간단함)
+    // 🔥 이미지 목록 업데이트 (아래는 기존과 동일)
+    // 1. 기존 이미지 삭제
     const { error: deleteError } = await supabase
       .from('item_images')
       .delete()
       .eq('item_id', editingItem.id);
     
-    if(deleteError) {
-      console.error('기존 이미지 삭제 실패:', deleteError);
-    }
+    if(deleteError) console.error('기존 이미지 삭제 실패:', deleteError);
 
     // 2. 현재 이미지 목록 다시 삽입
     if (editingItemImages.length > 0) {
@@ -218,9 +230,7 @@ export default function Dashboard() {
         display_order: index
       }));
       const { error: insertError } = await supabase.from('item_images').insert(imagesToInsert);
-      if(insertError) {
-        console.error('새 이미지 삽입 실패:', insertError);
-      }
+      if(insertError) console.error('새 이미지 삽입 실패:', insertError);
     }
 
     setIsDetailModalOpen(false); 

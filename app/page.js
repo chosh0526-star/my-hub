@@ -490,8 +490,8 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* 카드 그리드 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 px-6 max-w-7xl mx-auto">
+        {/* 🔥 [수정됨] 카드 그리드 (핀터레스트형 Masonry 레이아웃) */}
+        <div className="columns-1 md:columns-2 lg:columns-3 gap-6 mt-8 px-6 max-w-7xl mx-auto">
           {displayedItems.map(item => {
             const isSelected = selectedItems.includes(item.id);
             const hasImages = item.item_images && item.item_images.length > 0;
@@ -500,8 +500,9 @@ export default function Dashboard() {
               <div 
                 key={item.id} 
                 onClick={() => handleCardClick(item)} 
-                // 🔥 [수정 1] flex flex-col 뒤에 max-h-[36rem]을 추가! (카드가 무한정 길어지는 것 방지)
-                className={`border rounded-3xl p-6 shadow-xl relative group transition-all flex flex-col max-h-[36rem] ${
+                // 🔥 [핵심] break-inside-avoid와 mb-6을 추가해 벽돌 쌓기 완성! 
+                // max-h-[26rem]으로 텍스트 카드 혼자 무한정 길어지는 걸 차단합니다.
+                className={`break-inside-avoid mb-6 border rounded-3xl p-6 shadow-xl relative group transition-all flex flex-col max-h-[26rem] ${
                   currentMenu === 'trash' ? 'bg-red-950/20 border-red-900/30 opacity-70 hover:opacity-100 cursor-default' : 
                   isSelectMode ? (isSelected ? 'bg-blue-900/30 border-blue-500 ring-2 ring-blue-500/50 cursor-pointer' : 'bg-gray-900/50 border-gray-800 hover:border-white/20 opacity-60 hover:opacity-100 cursor-pointer') : 
                   'bg-gray-900 border-gray-800 hover:border-white/20 cursor-pointer'
@@ -555,7 +556,6 @@ export default function Dashboard() {
                 {item.login_id && currentMenu === 'home' && <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-1 shrink-0"><Lock size={10}/> 계정 정보 포함됨</div>}
                 
                 {item.content && (
-                  // 🔥 [수정 2] flex-1 추가 (끝까지 늘어나기), maxHeight 삭제, 그라데이션 고정 (calc(100% - 2.5rem))
                   <div 
                     className="mt-4 flex-1 overflow-hidden" 
                     style={{ 

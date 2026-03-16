@@ -48,12 +48,17 @@ export default function Dashboard() {
   const [newSubfolderName, setNewSubfolderName] = useState('');
 
   const [clickCount, setClickCount] = useState(0);
-  const [zoomedImage, setZoomedImage] = useState(null);
 
-  // 다중 이미지 및 슬라이드 상태
+  // 🔥 [업그레이드] 줌 모달 전용 상태 (대화면 슬라이드용)
+  const [zoomedData, setZoomedData] = useState(null); 
+  
+  // 🔥 [업그레이드] 모바일 스와이프(터치) 상태 관리
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+
+  // 다중 이미지 상태 (입력/수정용)
   const [newItemImages, setNewItemImages] = useState([]); 
   const [editingItemImages, setEditingItemImages] = useState([]); 
-  const [carouselIndices, setCarouselIndices] = useState({});
 
   const [newItem, setNewItem] = useState({
     title: '', category_id: '', subfolder_id: null, type: 'link', url: '', login_id: '', login_pw: '', content: ''
@@ -64,7 +69,6 @@ export default function Dashboard() {
     fetchInitialData(); 
   }, []);
 
-  // 외부 공유(단축어/웹클리퍼) 수신 로직
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sharedUrl = params.get('url');
@@ -105,10 +109,6 @@ export default function Dashboard() {
         item_images: (item.item_images || []).sort((a, b) => a.display_order - b.display_order)
       }));
       setItems(sortedItemData);
-
-      const initialIndices = {};
-      sortedItemData.forEach(item => { initialIndices[item.id] = 0; });
-      setCarouselIndices(initialIndices);
     }
   }
 
@@ -149,20 +149,6 @@ export default function Dashboard() {
     if (!error) fetchInitialData();
   };
 
-  const changeCarouselIndex = (e, itemId, direction) => {
-    e.stopPropagation(); 
-    const item = items.find(i => i.id === itemId);
-    if(!item || !item.item_images || item.item_images.length <= 1) return;
-    
-    setCarouselIndices(prev => {
-      const currentIndex = prev[itemId] || 0;
-      let nextIndex = currentIndex + direction;
-      if(nextIndex < 0) nextIndex = item.item_images.length - 1; 
-      if(nextIndex >= item.item_images.length) nextIndex = 0; 
-      return { ...prev, [itemId]: nextIndex };
-    });
-  };
-
   const handleCardClick = (item) => {
     if (currentMenu === 'trash') return;
     if (isSelectMode) {
@@ -179,7 +165,28 @@ export default function Dashboard() {
     }
   };
 
-  // 🔥 최적화: 400 에러 해결을 위해 깔끔하게 정제된 데이터만 업데이트
+  // 🔥 [업그레이드] 줌 모달 슬라이드 및 스와이프 함수
+  const handleZoomSlide = (e, direction) => {
+    if (e) e.stopPropagation();
+    if (!zoomedData || !zoomedData.images) return;
+    setZoomedData(prev => {
+      let nextIndex = prev.index + direction;
+      if (nextIndex < 0) nextIndex = prev.images.length - 1;
+      if (nextIndex >= prev.images.length) nextIndex = 0;
+      return { ...prev, index: nextIndex };
+    });
+  };
+
+  const minSwipeDistance = 50;
+  const onTouchStart = (e) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
+  const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    if (distance > minSwipeDistance) handleZoomSlide(null, 1);
+    if (distance < -minSwipeDistance) handleZoomSlide(null, -1);
+  };
+
   const handleUpdateItem = async (e) => {
     e.preventDefault();
     const updatedUrl = fixUrl(editingItem.url);
@@ -228,7 +235,6 @@ export default function Dashboard() {
       ...newItem, 
       type: exactType, 
       url: fixUrl(newItem.url), 
-      // 제목이 비어있으면 기본값 제공
       title: newItem.title || (exactType === 'image' ? '새 사진' : exactType === 'memo' ? '새 메모' : '새 링크') 
     };
     
@@ -252,7 +258,6 @@ export default function Dashboard() {
     fetchInitialData();
   }
 
-  // (카테고리, 폴더, 삭제 등 나머지 로직은 변경 없음 - 안정성 유지)
   const handleAuthConfirm = async (e) => {
     e.preventDefault();
     if (authInput === authModal.target.password) {
@@ -489,10 +494,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 px-6 max-w-7xl mx-auto">
           {displayedItems.map(item => {
             const isSelected = selectedItems.includes(item.id);
-            const currentCarouselIndex = carouselIndices[item.id] || 0;
             const hasImages = item.item_images && item.item_images.length > 0;
-            const currentImage = hasImages ? item.item_images[currentCarouselIndex]?.image_url : null;
-            const imagesCount = hasImages ? item.item_images.length : 0;
 
             return (
               <div 
@@ -520,16 +522,26 @@ export default function Dashboard() {
                   <div className="text-[9px] text-gray-600 font-mono">{new Date(item.created_at).toLocaleDateString()}</div>
                 </div>
 
+                {/* 🔥 [인스타 UI] 표지 하나만 보여주고 클릭 시 대화면 슬라이드 띄우기 */}
                 {hasImages && (
-                  <div className="relative group/carousel w-full h-48 rounded-2xl mb-4 border border-gray-800 overflow-hidden">
-                    <img src={currentImage} className={`w-full h-full object-cover transition-opacity ${currentMenu === 'home' && !isSelectMode ? 'cursor-zoom-in hover:opacity-90' : ''}`} alt={`uploaded ${currentCarouselIndex + 1}`} onClick={(e) => { if(currentMenu === 'home' && !isSelectMode){ e.stopPropagation(); setZoomedImage(currentImage); } }} />
-                    {imagesCount > 1 && (
-                      <>
-                        <button onClick={(e) => changeCarouselIndex(e, item.id, -1)} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full opacity-0 group-hover/carousel:opacity-100 transition-opacity"><ChevronLeft size={18} /></button>
-                        <button onClick={(e) => changeCarouselIndex(e, item.id, 1)} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full opacity-0 group-hover/carousel:opacity-100 transition-opacity"><ChevronRight size={18} /></button>
-                        <div className="absolute bottom-2 right-3 bg-black/60 text-white text-[10px] px-2.5 py-1 rounded-full font-mono font-bold tracking-tight">{currentCarouselIndex + 1} / {imagesCount}</div>
-                        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5">{item.item_images.map((_, index) => (<div key={index} className={`w-1.5 h-1.5 rounded-full transition-all ${index === currentCarouselIndex ? 'bg-white scale-110' : 'bg-white/40'}`}></div>))}</div>
-                      </>
+                  <div 
+                    className="relative group/img w-full h-48 rounded-2xl mb-4 border border-gray-800 overflow-hidden cursor-pointer"
+                    onClick={(e) => { 
+                      if(currentMenu === 'home' && !isSelectMode){ 
+                        e.stopPropagation(); 
+                        setZoomedData({ images: item.item_images, index: 0 }); 
+                      } 
+                    }}
+                  >
+                    <img 
+                      src={item.item_images[0]?.image_url} 
+                      className={`w-full h-full object-cover transition-opacity ${currentMenu === 'home' && !isSelectMode ? 'group-hover/img:opacity-90 cursor-zoom-in' : ''}`} 
+                      alt="uploaded cover" 
+                    />
+                    {item.item_images.length > 1 && (
+                      <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md text-white text-[11px] px-2 py-1 rounded-lg font-bold flex items-center gap-1.5 shadow-lg border border-white/10 pointer-events-none">
+                        <ImageIcon size={12} className="text-gray-300" /> +{item.item_images.length - 1}장
+                      </div>
                     )}
                   </div>
                 )}
@@ -573,7 +585,7 @@ export default function Dashboard() {
           <span className="text-white font-bold whitespace-nowrap"><span className="text-blue-400">{selectedItems.length}</span>개 선택됨</span>
           <div className="w-[1px] h-6 bg-gray-700"></div>
           <button onClick={() => setIsBatchMoveModalOpen(true)} disabled={selectedItems.length === 0} className={`flex items-center gap-2 font-bold transition-colors ${selectedItems.length > 0 ? 'text-white hover:text-blue-400' : 'text-gray-600'}`}><MoveRight size={18} /> 카테고리로 정리</button>
-          <button onClick={handleBatchDelete} disabled={selectedItems.length === 0} className={`flex items-center gap-2 font-bold transition-colors ${selectedItems.length > 0 ? 'text-white hover:text-red-500' : 'text-gray-600'}`}><Trash2 size={18} /> 휴지통으로</button>
+          <button onClick={handleBatchDelete} disabled={selectedItems.length === 0} className={`flex items-center gap-2 font-bold transition-colors ${selectedItems.length > 0 ? 'text-white hover:text-red-500' : 'text-gray-600'}`}><Trash2 size={18} /> 휴지통로</button>
           <button onClick={() => { setIsSelectMode(false); setSelectedItems([]); }} className="p-2 bg-white/10 rounded-full text-gray-400 hover:text-white ml-2"><X size={16} /></button>
         </div>
       )}
@@ -603,7 +615,6 @@ export default function Dashboard() {
                 <button type="button" onClick={() => setAddStep('choice')} className="text-sm text-gray-500 hover:text-white mb-2">← 뒤로가기</button>
                 <select className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white focus:border-white/50 outline-none transition-colors" value={newItem.category_id} onChange={e => setNewItem({...newItem, category_id: e.target.value})}><option value="" disabled>카테고리 선택</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                 
-                {/* 🔥 [버그 픽스] 사진 모드일 때는 제목 필수 해제! */}
                 <input required={!(addStep === 'photo' || newItemImages.length > 0)} placeholder={`제목을 입력하세요 ${(addStep === 'photo' || newItemImages.length > 0) ? '(선택)' : ''}`} className="w-full bg-black border border-gray-800 rounded-xl p-4 text-lg font-bold text-white" value={newItem.title} onChange={e => setNewItem({...newItem, title: e.target.value})} />
                 
                 {addStep === 'url' && ( <div className="space-y-3"><input required placeholder="naver.com" className="w-full bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.url} onChange={e => setNewItem({...newItem, url: e.target.value})} /><div className="grid grid-cols-2 gap-2"><input placeholder="ID (선택)" className="bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.login_id} onChange={e => setNewItem({...newItem, login_id: e.target.value})} /><input placeholder="PW (선택)" className="bg-black border border-gray-800 rounded-xl p-3 text-sm text-white" value={newItem.login_pw} onChange={e => setNewItem({...newItem, login_pw: e.target.value})} /></div></div> )}
@@ -627,7 +638,6 @@ export default function Dashboard() {
                   </div>
                 )}
                 
-                {/* 🔥 [버그 픽스] 사진 모드일 때는 메모 필수 해제! */}
                 {(addStep === 'photo' || addStep === 'memo' || newItemImages.length > 0) && ( 
                   <textarea required={addStep === 'memo' && newItemImages.length === 0} placeholder={`내용을 자유롭게 적어주세요 ${(addStep === 'photo' || newItemImages.length > 0) ? '(선택)' : ''}`} className={`w-full bg-black border border-gray-800 rounded-xl p-4 text-sm leading-relaxed text-white ${addStep === 'memo' ? 'h-60' : 'h-32'}`} value={newItem.content} onChange={e => setNewItem({...newItem, content: e.target.value})} /> 
                 )}
@@ -723,7 +733,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 모달 3, 4, 5, 6, 이미지 줌 (기존 로직 동일 유지) */}
+      {/* 모달 3: 일괄 이동 창 */}
       {isBatchMoveModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[110] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
@@ -738,6 +748,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* 모달 4: 새 폴더 생성 창 */}
       {isSubfolderModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
@@ -753,6 +764,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* 모달 5: 인증 (PIN 입력) 창 */}
       {authModal.open && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-center">
           <div className="bg-gray-900 w-full max-sm rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
@@ -768,6 +780,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* 모달 6: 카테고리 관리 창 */}
       {isCategoryModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[60] flex items-center justify-center p-4 text-left">
           <div className="bg-gray-900 w-full max-w-md rounded-3xl p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]">
@@ -802,9 +815,51 @@ export default function Dashboard() {
         </div>
       )}
 
-      {zoomedImage && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[120] flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setZoomedImage(null)}>
-          <div className="relative max-w-5xl w-full flex justify-center"><button onClick={() => setZoomedImage(null)} className="absolute -top-14 right-0 text-white bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors"><X size={24} /></button><img src={zoomedImage} alt="zoomed" className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl" /></div>
+      {/* 🔥 [업그레이드] 대화면 이미지 슬라이드 & 모바일 스와이프 모달 */}
+      {zoomedData && (
+        <div 
+          className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[120] flex items-center justify-center p-0 md:p-4 select-none" 
+          onClick={() => setZoomedData(null)}
+        >
+          <div className="relative max-w-5xl w-full h-full flex flex-col items-center justify-center">
+            {/* 닫기 버튼 */}
+            <button onClick={() => setZoomedData(null)} className="absolute top-6 right-6 z-50 text-white bg-white/10 p-3 rounded-full hover:bg-white/20 transition-colors shadow-2xl backdrop-blur-md"><X size={24} /></button>
+            
+            {/* 이미지 영역 (스와이프 이벤트 탑재) */}
+            <div 
+              className="relative w-full h-full md:h-[85vh] flex items-center justify-center overflow-hidden"
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+              onClick={(e) => e.stopPropagation()} 
+            >
+              {zoomedData.images.length > 1 && (
+                <>
+                  <button onClick={(e) => handleZoomSlide(e, -1)} className="hidden md:flex absolute left-4 z-10 bg-black/50 text-white p-4 rounded-full hover:bg-black/80 transition-all border border-white/10"><ChevronLeft size={32} /></button>
+                  <button onClick={(e) => handleZoomSlide(e, 1)} className="hidden md:flex absolute right-4 z-10 bg-black/50 text-white p-4 rounded-full hover:bg-black/80 transition-all border border-white/10"><ChevronRight size={32} /></button>
+                </>
+              )}
+              
+              <img 
+                src={zoomedData.images[zoomedData.index].image_url} 
+                alt="zoomed" 
+                className="max-w-full max-h-full object-contain md:rounded-2xl shadow-2xl transition-transform duration-300" 
+              />
+            </div>
+
+            {/* 하단 동그라미 인디케이터 */}
+            {zoomedData.images.length > 1 && (
+              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-2.5 bg-black/60 px-5 py-3 rounded-full backdrop-blur-md border border-white/10" onClick={(e) => e.stopPropagation()}>
+                {zoomedData.images.map((_, idx) => (
+                  <button 
+                    key={idx} 
+                    onClick={() => setZoomedData({ ...zoomedData, index: idx })}
+                    className={`h-2 rounded-full transition-all ${idx === zoomedData.index ? 'w-6 bg-white' : 'w-2 bg-white/40 hover:bg-white/70'}`} 
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -490,8 +490,8 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* 🔥 [수정됨] 카드 그리드 (핀터레스트형 Masonry 레이아웃) */}
-        <div className="columns-1 md:columns-2 lg:columns-3 gap-6 mt-8 px-6 max-w-7xl mx-auto">
+        {/* 🔥 [수정됨] 다시 시간순 정렬(Grid)로 복귀하고, 모든 카드 높이를 26rem으로 완벽 고정! */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 px-6 max-w-7xl mx-auto">
           {displayedItems.map(item => {
             const isSelected = selectedItems.includes(item.id);
             const hasImages = item.item_images && item.item_images.length > 0;
@@ -500,9 +500,8 @@ export default function Dashboard() {
               <div 
                 key={item.id} 
                 onClick={() => handleCardClick(item)} 
-                // 🔥 [핵심] break-inside-avoid와 mb-6을 추가해 벽돌 쌓기 완성! 
-                // max-h-[26rem]으로 텍스트 카드 혼자 무한정 길어지는 걸 차단합니다.
-                className={`break-inside-avoid mb-6 border rounded-3xl p-6 shadow-xl relative group transition-all flex flex-col max-h-[26rem] ${
+                // 🔥 [핵심] break-inside-avoid와 mb-6을 빼고, h-[28rem] 을 넣어서 모든 카드 높이를 똑같이 맞춥니다!
+                className={`border rounded-3xl p-6 shadow-xl relative group transition-all flex flex-col h-[28rem] ${
                   currentMenu === 'trash' ? 'bg-red-950/20 border-red-900/30 opacity-70 hover:opacity-100 cursor-default' : 
                   isSelectMode ? (isSelected ? 'bg-blue-900/30 border-blue-500 ring-2 ring-blue-500/50 cursor-pointer' : 'bg-gray-900/50 border-gray-800 hover:border-white/20 opacity-60 hover:opacity-100 cursor-pointer') : 
                   'bg-gray-900 border-gray-800 hover:border-white/20 cursor-pointer'
@@ -518,7 +517,7 @@ export default function Dashboard() {
                   </div>
                 )}
                 
-                <div className={`mb-4 flex items-center gap-2 ${isSelectMode && (currentMenu === 'home' || currentMenu === 'mailbox') ? 'ml-8' : ''}`}>
+                <div className={`mb-4 flex items-center gap-2 shrink-0 ${isSelectMode && (currentMenu === 'home' || currentMenu === 'mailbox') ? 'ml-8' : ''}`}>
                   {item.category_id ? <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full">{categories.find(c => c.id === item.category_id)?.name}</span> : <span className="text-[10px] font-bold tracking-widest uppercase text-indigo-400 bg-indigo-400/10 px-3 py-1 rounded-full">수신됨</span>}
                   {item.subfolder_id && !currentSubfolder && ( <span className="text-[10px] font-bold tracking-widest uppercase text-purple-400 bg-purple-400/10 px-3 py-1 rounded-full flex items-center gap-1"><Folder size={10}/> {subfolders.find(s => s.id === item.subfolder_id)?.name}</span> )}
                   <div className="text-[9px] text-gray-600 font-mono">{new Date(item.created_at).toLocaleDateString()}</div>

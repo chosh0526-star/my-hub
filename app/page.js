@@ -52,18 +52,23 @@ export default function Dashboard() {
     fetchInitialData(); 
   }, []);
 
-  // 🔥 핵심: 모바일 웹 클리퍼 파라미터 낚아채기
+  // 🔥 핵심: 모바일 웹 클리퍼 파라미터(URL + 제목) 낚아채기
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sharedUrl = params.get('url');
+    const sharedTitle = params.get('title'); // 🌟 제목 파라미터 추가!
     
     if (sharedUrl) {
-      // url 파라미터가 감지되면 즉시 모달을 띄우고 주소를 입력합니다.
       setIsModalOpen(true); 
       setAddStep('url');    
-      setNewItem(prev => ({ ...prev, url: sharedUrl }));
       
-      // 파라미터를 사용한 뒤에는 주소창을 원래대로 깔끔하게 지워줍니다. (무한 반복 방지)
+      // 🌟 주소와 함께, 제목이 있으면 제목 칸에 쏙 넣어줍니다!
+      setNewItem(prev => ({ 
+        ...prev, 
+        url: sharedUrl,
+        title: sharedTitle ? sharedTitle : '' 
+      }));
+      
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);

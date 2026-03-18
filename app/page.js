@@ -143,6 +143,14 @@ export default function Dashboard() {
     return trimmedUrl;
   };
 
+  // 🔥 [복구완료] 제가 날려먹었던 즐겨찾기 함수 컴백! (+ 버블링 완벽 차단)
+  const toggleFavorite = async (e, item) => {
+    e.preventDefault();  
+    e.stopPropagation(); 
+    const { error } = await supabase.from('dashboard_items').update({ is_favorite: !item.is_favorite }).eq('id', item.id);
+    if (!error) fetchInitialData();
+  };
+
   const handleCardClick = (item) => {
     if (currentMenu === 'trash') return;
     if (isSelectMode) {
@@ -350,11 +358,21 @@ export default function Dashboard() {
     }
   }
 
-  async function handleRestore(e, id) { e.stopPropagation(); await supabase.from('dashboard_items').update({ is_deleted: false }).eq('id', id); fetchInitialData(); }
+  // 🔥 휴지통 버튼들도 버블링 예방 주사 꾹!
+  async function handleRestore(e, id) { 
+    e.preventDefault();
+    e.stopPropagation(); 
+    await supabase.from('dashboard_items').update({ is_deleted: false }).eq('id', id); 
+    fetchInitialData(); 
+  }
   
   async function handleHardDelete(e, id) {
+    e.preventDefault();
     e.stopPropagation();
-    if (confirm('영구 삭제하면 다시는 복구할 수 없습니다. 삭제하시겠습니까?')) { await supabase.from('dashboard_items').delete().eq('id', id); fetchInitialData(); }
+    if (confirm('영구 삭제하면 다시는 복구할 수 없습니다. 삭제하시겠습니까?')) { 
+      await supabase.from('dashboard_items').delete().eq('id', id); 
+      fetchInitialData(); 
+    }
   }
 
   const handleBatchDelete = async () => {

@@ -9,6 +9,7 @@ import {
   MoveRight, ArrowDownUp, Menu, Home, ArchiveRestore, AlertOctagon, Mail, 
   ChevronLeft, ChevronRight, Bot, Send, Loader2 
 } from 'lucide-react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export default function Dashboard() {
   // 1. 상태 관리 (State)
@@ -282,7 +283,34 @@ export default function Dashboard() {
       title: newItem.title || (exactType === 'image' ? '새 사진' : exactType === 'memo' ? '새 메모' : '새 링크') 
     };
     
-    const { data: insertedItem, error: itemError } = await supabase.from('dashboard_items').insert([finalItem]).select().single();
+    // --- [추가] AI 학습 (임베딩 생성) 로직 시작 ---
+    try {
+      // 1. AI에게 학습시킬 텍스트 조합 (제목과 내용을 합칩니다)
+      const textToEmbed = `제목: ${finalItem.title}\n내용: ${finalItem.content || ''}`;
+
+      // 2. 구글 임베딩 모델 호출 (NEXT_PUBLIC_ 붙은 키를 사용한다고 가정합니다)
+      const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
+      const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+      
+      const result = await embeddingModel.embedContent(textToEmbed);
+      const embeddingValues = result.embedding.values;
+
+      // 3. 저장할 아이템 데이터에 방금 만든 숫자 배열(벡터)을 추가합니다.
+      finalItem.embedding = embeddingValues;
+      
+      console.log("AI가 문맥 학습을 완료했습니다! 🧠");
+    } catch (embedError) {
+      // AI 학습 실패해도 저장은 되어야 하므로 에러 로그만 남깁니다.
+      console.error("AI 학습 실패 (임베딩 생성 에러):", embedError);
+    }
+    // --- [추가] AI 학습 로직 끝 ---
+
+    // [기존 코드 시작] 이제 finalItem 안에는 embedding 데이터가 포함되어 있습니다!
+    const { data: insertedItem, error: itemError } = await supabase
+      .from('dashboard_items')
+      .insert([finalItem]) // 여기서 embedding이 같이 저장됩니다.
+      .select()
+      .single();
 
     if (itemError) {
       alert('저장 실패: ' + itemError.message);

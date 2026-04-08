@@ -951,7 +951,7 @@ export default function Dashboard() {
       <button 
         onClick={() => setIsChatOpen(!isChatOpen)} 
         // 🔥 [핵심 수정] 너무 높았던 bottom-48을 -> bottom-[9.5rem]으로 내립니다. (우측 중심점 right-[2.25rem]은 유지!)
-        className="fixed bottom-[9.5rem] right-[2.25rem] w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(79,70,229,0.5)] active:scale-90 transition-all z-40 hover:shadow-[0_10px_35px_rgba(79,70,229,0.8)]"
+        className="fixed bottom-[-20rem] right-[2.25rem] w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(79,70,229,0.5)] active:scale-90 transition-all z-40 hover:shadow-[0_10px_35px_rgba(79,70,229,0.8)]"
       >
         {isChatOpen ? <X size={24} /> : <Bot size={28} />}
       </button>

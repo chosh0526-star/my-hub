@@ -950,16 +950,16 @@ export default function Dashboard() {
       {/* 챗봇 토글 버튼 */}
       <button 
         onClick={() => setIsChatOpen(!isChatOpen)} 
-        // 🔥 [핵심 수정] 9.5rem에서 -> 8.5rem으로 딱 16px 더 내립니다!
-        className="fixed bottom-[8.5rem] right-[2.25rem] w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(79,70,229,0.5)] active:scale-90 transition-all z-40 hover:shadow-[0_10px_35px_rgba(79,70,229,0.8)]"
+        // 🔥 [최종 픽스] 8.5rem에서 딱 2rem 더 내린 6.5rem! (+버튼과 정확히 8px 간격 유지)
+        className="fixed bottom-[6.5rem] right-[2.25rem] w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(79,70,229,0.5)] active:scale-90 transition-all z-40 hover:shadow-[0_10px_35px_rgba(79,70,229,0.8)]"
       >
         {isChatOpen ? <X size={24} /> : <Bot size={28} />}
       </button>
 
       {/* 챗봇 창 */}
       {isChatOpen && (
-        // 🔥 [핵심 수정] 버튼이 내려간 만큼 챗봇 창도 14rem -> 13rem으로 같이 내려줍니다.
-        <div className="fixed bottom-[13rem] right-4 md:right-8 w-[calc(100vw-2rem)] md:w-96 h-[30rem] bg-gray-900 border border-gray-700/50 rounded-3xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 backdrop-blur-xl">
+        // 🔥 [최종 픽스] 버튼이 내려간 만큼 창 높이도 13rem -> 11rem으로 동기화!
+        <div className="fixed bottom-[11rem] right-4 md:right-8 w-[calc(100vw-2rem)] md:w-96 h-[30rem] bg-gray-900 border border-gray-700/50 rounded-3xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 backdrop-blur-xl">
           {/* 헤더 */}
           <div className="bg-gray-800/80 p-4 border-b border-gray-700/50 flex justify-between items-center backdrop-blur-md">
             <div className="flex items-center gap-2 font-bold text-white">

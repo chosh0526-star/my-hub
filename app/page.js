@@ -290,7 +290,7 @@ export default function Dashboard() {
 
       // 2. 구글 임베딩 모델 호출 (NEXT_PUBLIC_ 붙은 키를 사용한다고 가정합니다)
       const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
-      const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+      const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-001" });
       
       const result = await embeddingModel.embedContent(textToEmbed);
       const embeddingValues = result.embedding.values;

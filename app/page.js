@@ -968,7 +968,15 @@ export default function Dashboard() {
           </div>
           
           {/* 메시지 영역 */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar bg-black/20">
+          {/* 메시지 영역 */}
+          {/* 🔥 [핵심 수정] 기존의 투박한 스크롤바를 깎아내고 슬림한 다크 스크롤바 스타일링을 추가합니다. */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-black/20 
+            [&::-webkit-scrollbar]:w-1.5 
+            [&::-webkit-scrollbar-track]:bg-transparent 
+            [&::-webkit-scrollbar-thumb]:bg-gray-700/80 
+            [&::-webkit-scrollbar-thumb]:rounded-full 
+            hover:[&::-webkit-scrollbar-thumb]:bg-gray-500"
+          >
             {chatMessages.map((msg, idx) => (
               <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] rounded-2xl p-3 text-sm leading-relaxed ${

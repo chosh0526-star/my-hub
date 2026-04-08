@@ -945,19 +945,21 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-    {/* 🔥 [챗봇 플로팅 UI] 대화면 이미지 모달(zoomedData) 코드 바로 밑에 넣어주세요! */}
+    {/* 🔥 [챗봇 플로팅 UI] 겹침 문제 해결을 위해 bottom 위치를 위로 확 올립니다! */}
       
       {/* 챗봇 토글 버튼 */}
       <button 
         onClick={() => setIsChatOpen(!isChatOpen)} 
-        className="fixed bottom-28 right-8 md:bottom-8 md:right-8 w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(79,70,229,0.5)] active:scale-90 transition-all z-40 hover:shadow-[0_10px_35px_rgba(79,70,229,0.8)]"
+        // 🔥 [핵심 수정] bottom-28 -> bottom-40 (모바일), md:bottom-8 -> md:bottom-16 (데스크탑)으로 겹침 완벽 차단!
+        className="fixed bottom-40 right-8 md:bottom-16 md:right-8 w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(79,70,229,0.5)] active:scale-90 transition-all z-40 hover:shadow-[0_10px_35px_rgba(79,70,229,0.8)]"
       >
         {isChatOpen ? <X size={24} /> : <Bot size={28} />}
       </button>
 
       {/* 챗봇 창 */}
       {isChatOpen && (
-        <div className="fixed bottom-44 right-4 md:bottom-28 md:right-8 w-[calc(100vw-2rem)] md:w-96 h-[30rem] bg-gray-900 border border-gray-700/50 rounded-3xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 backdrop-blur-xl">
+        // 🔥 [핵심 수정] 토글 버튼 위에 뜨도록 비례해서 위치를 올립니다. bottom-44 -> bottom-56 (모바일), md:bottom-28 -> md:bottom-36 (데스크탑)
+        <div className="fixed bottom-56 right-4 md:bottom-36 md:right-8 w-[calc(100vw-2rem)] md:w-96 h-[30rem] bg-gray-900 border border-gray-700/50 rounded-3xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 backdrop-blur-xl">
           {/* 헤더 */}
           <div className="bg-gray-800/80 p-4 border-b border-gray-700/50 flex justify-between items-center backdrop-blur-md">
             <div className="flex items-center gap-2 font-bold text-white">
@@ -972,7 +974,7 @@ export default function Dashboard() {
                 <div className={`max-w-[85%] rounded-2xl p-3 text-sm leading-relaxed ${
                   msg.role === 'user' 
                     ? 'bg-blue-600 text-white rounded-br-sm' 
-                    : 'bg-gray-800 border border-gray-700/50 text-gray-200 rounded-bl-sm whitespace-pre-wrap'
+                    : 'bg-gray-900 border border-gray-700/50 text-gray-200 rounded-bl-sm whitespace-pre-wrap' // border 추가
                 }`}>
                   {msg.content}
                 </div>
@@ -980,7 +982,7 @@ export default function Dashboard() {
             ))}
             {isChatLoading && (
               <div className="flex justify-start">
-                <div className="bg-gray-800 border border-gray-700/50 text-gray-400 rounded-2xl rounded-bl-sm p-4 flex gap-1">
+                <div className="bg-gray-900 border border-gray-700/50 text-gray-400 rounded-2xl rounded-bl-sm p-4 flex gap-1"> {/* bg-gray-800 -> bg-gray-900, border 추가 */}
                   <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
                   <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-75"></div>
                   <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-150"></div>

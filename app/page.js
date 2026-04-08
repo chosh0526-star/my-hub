@@ -951,7 +951,7 @@ export default function Dashboard() {
       <button 
         onClick={() => setIsChatOpen(!isChatOpen)} 
         // 🔥 [핵심 수정] 너무 높았던 bottom-48을 -> bottom-[9.5rem]으로 내립니다. (우측 중심점 right-[2.25rem]은 유지!)
-        className="fixed bottom-[-20rem] right-[2.25rem] w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(79,70,229,0.5)] active:scale-90 transition-all z-40 hover:shadow-[0_10px_35px_rgba(79,70,229,0.8)]"
+        className="fixed bottom-[9.5rem] right-[2.25rem] w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(79,70,229,0.5)] active:scale-90 transition-all z-40 hover:shadow-[0_10px_35px_rgba(79,70,229,0.8)]"
       >
         {isChatOpen ? <X size={24} /> : <Bot size={28} />}
       </button>
@@ -959,7 +959,7 @@ export default function Dashboard() {
       {/* 챗봇 창 */}
       {isChatOpen && (
         // 🔥 [핵심 수정] 챗봇 창도 버튼 위치에 맞춰서 bottom-[16rem] -> bottom-[14rem]으로 자연스럽게 내립니다.
-        <div className="fixed bottom-[12rem] right-4 md:right-8 w-[calc(100vw-2rem)] md:w-96 h-[30rem] bg-gray-900 border border-gray-700/50 rounded-3xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 backdrop-blur-xl">
+        <div className="fixed bottom-[14rem] right-4 md:right-8 w-[calc(100vw-2rem)] md:w-96 h-[30rem] bg-gray-900 border border-gray-700/50 rounded-3xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 backdrop-blur-xl">
           {/* 헤더 */}
           <div className="bg-gray-800/80 p-4 border-b border-gray-700/50 flex justify-between items-center backdrop-blur-md">
             <div className="flex items-center gap-2 font-bold text-white">

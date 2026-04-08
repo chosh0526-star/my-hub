@@ -7,10 +7,10 @@ export async function POST(req) {
   try {
     const { messages } = await req.json();
     
-    // 🔥 [최종 우회 픽스] 이름 충돌이 없는 가장 안정적인 클래식 모델 사용!
-    // (gemini-pro는 호환성을 위해 systemInstruction 옵션을 제거했습니다)
+    // 🔥 [구글 정책 변경 대응 픽스] 2026년 최신 표준 모델인 2.5 Flash로 교체!
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-pro" 
+      model: "gemini-2.5-flash",
+      systemInstruction: "당신은 'The Archive' 앱의 친절하고 똑똑한 AI 비서입니다. 사용자에게 친근하고 간결하게 답변해주세요."
     });
 
     // 이전 대화 기록 포맷 변환
@@ -25,12 +25,9 @@ export async function POST(req) {
     }
 
     const chat = model.startChat({ history: formattedHistory });
-
-    // 🔥 [핵심] systemInstruction 대신, 사용자의 마지막 질문에 '비서 페르소나'를 몰래 끼워 넣어서 보냅니다!
     const lastMessage = messages[messages.length - 1].content;
-    const promptWithPersona = `당신은 'The Archive' 앱의 친절하고 똑똑한 AI 비서입니다. 사용자에게 친근하고 간결하게 답변해주세요.\n\n사용자 질문: ${lastMessage}`;
     
-    const result = await chat.sendMessage(promptWithPersona);
+    const result = await chat.sendMessage(lastMessage);
     const response = await result.response;
     
     return NextResponse.json({ text: response.text() });

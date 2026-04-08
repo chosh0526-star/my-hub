@@ -18,7 +18,7 @@ export async function POST(req) {
     
     const result = await model.embedContent(text);
     // 🔥 [최종 압축] 3072개의 숫자를 앞부분 768개만 잘라냅니다 (MRL 기술!)
-const embedding = result.embedding.values.slice(0, 768);
+    const embedding = result.embedding.values.slice(0, 768);
 
     return NextResponse.json({ embedding });
 

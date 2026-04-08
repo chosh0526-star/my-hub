@@ -959,7 +959,7 @@ export default function Dashboard() {
       {/* 챗봇 창 */}
       {isChatOpen && (
         // 🔥 [핵심 수정] 챗봇 창도 버튼 위치에 맞춰서 bottom-[16rem] -> bottom-[14rem]으로 자연스럽게 내립니다.
-        <div className="fixed bottom-[14rem] right-4 md:right-8 w-[calc(100vw-2rem)] md:w-96 h-[30rem] bg-gray-900 border border-gray-700/50 rounded-3xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 backdrop-blur-xl">
+        <div className="fixed bottom-[12rem] right-4 md:right-8 w-[calc(100vw-2rem)] md:w-96 h-[30rem] bg-gray-900 border border-gray-700/50 rounded-3xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 backdrop-blur-xl">
           {/* 헤더 */}
           <div className="bg-gray-800/80 p-4 border-b border-gray-700/50 flex justify-between items-center backdrop-blur-md">
             <div className="flex items-center gap-2 font-bold text-white">

@@ -959,7 +959,7 @@ export default function Dashboard() {
       {/* 챗봇 창 */}
       {isChatOpen && (
         // 🔥 [핵심 수정] 토글 버튼 위에 뜨도록 비례해서 위치를 올립니다. bottom-44 -> bottom-56 (모바일), md:bottom-28 -> md:bottom-36 (데스크탑)
-        <div className="fixed bottom-56 right-4 md:bottom-36 md:right-8 w-[calc(100vw-2rem)] md:w-96 h-[30rem] bg-gray-900 border border-gray-700/50 rounded-3xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 backdrop-blur-xl">
+        <div className="fixed bottom-74 right-4 md:bottom-36 md:right-8 w-[calc(100vw-2rem)] md:w-96 h-[30rem] bg-gray-900 border border-gray-700/50 rounded-3xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 backdrop-blur-xl">
           {/* 헤더 */}
           <div className="bg-gray-800/80 p-4 border-b border-gray-700/50 flex justify-between items-center backdrop-blur-md">
             <div className="flex items-center gap-2 font-bold text-white">

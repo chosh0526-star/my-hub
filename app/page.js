@@ -7,7 +7,7 @@ import {
   Lock, ShieldCheck, Link, FileText, Calendar, Search, Star, ChevronUp, ChevronDown, 
   FolderOpen, FolderPlus, ArrowLeft, Folder, CheckCircle2, Circle, CheckSquare, 
   MoveRight, ArrowDownUp, Menu, Home, ArchiveRestore, AlertOctagon, Mail, 
-  ChevronLeft, ChevronRight 
+  ChevronLeft, ChevronRight, Bot, Send, Loader2 
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -48,6 +48,14 @@ export default function Dashboard() {
   const [newSubfolderName, setNewSubfolderName] = useState('');
 
   const [clickCount, setClickCount] = useState(0);
+
+  // 🔥 [챗봇 상태 관리]
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState([
+    { role: 'assistant', content: '안녕하세요! The Archive의 AI 비서입니다. 무엇을 도와드릴까요?' }
+  ]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   // 대화면 슬라이드 전용 상태
   const [zoomedData, setZoomedData] = useState(null); 
@@ -113,6 +121,40 @@ export default function Dashboard() {
   }
 
   // 3. 주요 기능 함수들
+
+  // 🔥 [챗봇 전송 로직]
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const newUserMessage = { role: 'user', content: chatInput };
+    const updatedMessages = [...chatMessages, newUserMessage];
+    
+    setChatMessages(updatedMessages);
+    setChatInput('');
+    setIsChatLoading(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: updatedMessages })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setChatMessages(prev => [...prev, { role: 'assistant', content: data.text }]);
+      } else {
+        alert(data.error || '오류가 발생했습니다.');
+      }
+    } catch (error) {
+      alert('통신 오류가 발생했습니다.');
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
   const handleTitleClick = () => {
     if (clickCount >= 4) {
       const secretCat = categories.find(c => c.name === '비밀창고');
@@ -903,6 +945,72 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-    </div>
+    {/* 🔥 [챗봇 플로팅 UI] 대화면 이미지 모달(zoomedData) 코드 바로 밑에 넣어주세요! */}
+      
+      {/* 챗봇 토글 버튼 */}
+      <button 
+        onClick={() => setIsChatOpen(!isChatOpen)} 
+        className="fixed bottom-28 right-8 md:bottom-8 md:right-8 w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(79,70,229,0.5)] active:scale-90 transition-all z-40 hover:shadow-[0_10px_35px_rgba(79,70,229,0.8)]"
+      >
+        {isChatOpen ? <X size={24} /> : <Bot size={28} />}
+      </button>
+
+      {/* 챗봇 창 */}
+      {isChatOpen && (
+        <div className="fixed bottom-44 right-4 md:bottom-28 md:right-8 w-[calc(100vw-2rem)] md:w-96 h-[30rem] bg-gray-900 border border-gray-700/50 rounded-3xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 backdrop-blur-xl">
+          {/* 헤더 */}
+          <div className="bg-gray-800/80 p-4 border-b border-gray-700/50 flex justify-between items-center backdrop-blur-md">
+            <div className="flex items-center gap-2 font-bold text-white">
+              <Bot className="text-blue-400" size={20}/> AI 비서
+            </div>
+          </div>
+          
+          {/* 메시지 영역 */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar bg-black/20">
+            {chatMessages.map((msg, idx) => (
+              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] rounded-2xl p-3 text-sm leading-relaxed ${
+                  msg.role === 'user' 
+                    ? 'bg-blue-600 text-white rounded-br-sm' 
+                    : 'bg-gray-800 border border-gray-700/50 text-gray-200 rounded-bl-sm whitespace-pre-wrap'
+                }`}>
+                  {msg.content}
+                </div>
+              </div>
+            ))}
+            {isChatLoading && (
+              <div className="flex justify-start">
+                <div className="bg-gray-800 border border-gray-700/50 text-gray-400 rounded-2xl rounded-bl-sm p-4 flex gap-1">
+                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-75"></div>
+                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-150"></div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 입력창 */}
+          <form onSubmit={handleSendMessage} className="p-3 bg-gray-800/80 border-t border-gray-700/50">
+            <div className="relative flex items-center">
+              <input 
+                type="text" 
+                value={chatInput} 
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="궁금한 것을 물어보세요..." 
+                className="w-full bg-black/50 border border-gray-700 rounded-xl py-3 pl-4 pr-12 text-sm text-white focus:border-blue-500 outline-none transition-colors"
+                disabled={isChatLoading}
+              />
+              <button 
+                type="submit" 
+                disabled={!chatInput.trim() || isChatLoading}
+                className="absolute right-2 p-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 text-white rounded-lg transition-colors"
+              >
+                {isChatLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div> // <-- 기존 파일 맨 마지막을 장식하던 </div> 입니다.
   );
 }

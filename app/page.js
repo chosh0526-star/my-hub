@@ -283,27 +283,27 @@ export default function Dashboard() {
       title: newItem.title || (exactType === 'image' ? '새 사진' : exactType === 'memo' ? '새 메모' : '새 링크') 
     };
     
-    // --- [추가] AI 학습 (임베딩 생성) 로직 시작 ---
+    // --- [수정] 우리 서버를 통해 AI 학습 (임베딩 생성) 하기 ---
     try {
-      // 1. AI에게 학습시킬 텍스트 조합 (제목과 내용을 합칩니다)
       const textToEmbed = `제목: ${finalItem.title}\n내용: ${finalItem.content || ''}`;
 
-      // 2. 구글 임베딩 모델 호출 (NEXT_PUBLIC_ 붙은 키를 사용한다고 가정합니다)
-      const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
-      const embeddingModel = genAI.getGenerativeModel({ model: "embedding-001" });
-      
-      const result = await embeddingModel.embedContent(textToEmbed);
-      const embeddingValues = result.embedding.values;
+      // 구글 직접 호출 대신 우리 백엔드 호출!
+      const response = await fetch('/api/embed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: textToEmbed })
+      });
 
-      // 3. 저장할 아이템 데이터에 방금 만든 숫자 배열(벡터)을 추가합니다.
-      finalItem.embedding = embeddingValues;
+      const data = await response.json();
       
-      console.log("AI가 문맥 학습을 완료했습니다! 🧠");
+      if (data.embedding) {
+        finalItem.embedding = data.embedding;
+        console.log("AI가 문맥 학습을 완벽하게 완료했습니다! 🧠✨");
+      }
     } catch (embedError) {
-      // AI 학습 실패해도 저장은 되어야 하므로 에러 로그만 남깁니다.
-      console.error("AI 학습 실패 (임베딩 생성 에러):", embedError);
+      console.error("AI 학습 실패:", embedError);
     }
-    // --- [추가] AI 학습 로직 끝 ---
+    // --- [수정 끝] ---
 
     // [기존 코드 시작] 이제 finalItem 안에는 embedding 데이터가 포함되어 있습니다!
     const { data: insertedItem, error: itemError } = await supabase

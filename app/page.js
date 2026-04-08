@@ -513,6 +513,16 @@ export default function Dashboard() {
           <button onClick={() => { setCurrentMenu('home'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'home' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Home size={20} /> 메인</button>
           <button onClick={() => { setCurrentMenu('mailbox'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'mailbox' ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Mail size={20} /> 메일함</button>
           <button onClick={() => { setCurrentMenu('trash'); setCurrentSubfolder(null); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${currentMenu === 'trash' ? 'bg-red-500/20 text-red-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Trash2 size={20} /> 휴지통</button>
+          <button 
+            onClick={() => { 
+              setIsChatOpen(!isChatOpen); 
+              setIsSidebarOpen(false); // 모바일에서 버튼을 누르면 사이드바가 닫히도록 추가
+            }} 
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all ${isChatOpen ? 'bg-purple-500/20 text-purple-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+          >
+            <Bot size={20} /> 
+            {isChatOpen ? 'AI 비서 닫기' : 'AI 비서 부르기'}
+          </button>
         </nav>
         <div className="p-4 border-t border-white/5">
           <button onClick={() => { setIsCategoryModalOpen(true); setIsSidebarOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-gray-400 hover:bg-white/5 hover:text-white transition-all"><Settings size={20} /> 카테고리 및 설정</button>
@@ -974,15 +984,6 @@ export default function Dashboard() {
         </div>
       )}
     {/* 🔥 [챗봇 플로팅 UI] 고도를 적당히 낮춰서 가장 예쁜 간격을 만듭니다! */}
-      
-      {/* 챗봇 토글 버튼 */}
-      <button 
-        onClick={() => setIsChatOpen(!isChatOpen)} 
-        // 🔥 [궁극의 픽스] 6.5rem에서 0.5rem(25%) 위로 올려서 딱 7rem 안착!
-        className="fixed bottom-[7rem] right-[2.25rem] w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(79,70,229,0.5)] active:scale-90 transition-all z-40 hover:shadow-[0_10px_35px_rgba(79,70,229,0.8)]"
-      >
-        {isChatOpen ? <X size={24} /> : <Bot size={28} />}
-      </button>
 
       {/* 챗봇 창 */}
       {isChatOpen && (
@@ -995,7 +996,6 @@ export default function Dashboard() {
             </div>
           </div>
           
-          {/* 메시지 영역 */}
           {/* 메시지 영역 */}
           {/* 🔥 [핵심 수정] 기존의 투박한 스크롤바를 깎아내고 슬림한 다크 스크롤바 스타일링을 추가합니다. */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-black/20 

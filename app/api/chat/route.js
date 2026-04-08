@@ -10,7 +10,8 @@ export async function POST(req) {
     
     // 빠르고 똑똑한 최신 범용 모델 사용
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      // 🔥 [핵심 수정] gemini-1.5-flash 뒤에 '-latest'를 붙여줍니다!
+      model: "gemini-1.5-flash-latest",
       // 원한다면 여기에 챗봇의 페르소나를 부여할 수 있습니다.
       systemInstruction: "당신은 'The Archive' 앱의 친절하고 똑똑한 개인 비서입니다. 사용자의 질문에 간결하고 유용하게 답해주세요."
     });

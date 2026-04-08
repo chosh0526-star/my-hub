@@ -945,22 +945,21 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-    {/* 🔥 [챗봇 플로팅 UI] 중심점(Center)을 완벽히 맞추고, 위치를 다른 버튼 위로 확실히 올립니다! */}
+    {/* 🔥 [챗봇 플로팅 UI] 고도를 적당히 낮춰서 가장 예쁜 간격을 만듭니다! */}
       
       {/* 챗봇 토글 버튼 */}
       <button 
         onClick={() => setIsChatOpen(!isChatOpen)} 
-        // 🔥 [핵심 수정] right-[2.25rem]을 적용해 아래 +버튼(w-16, right-8)과 수직 중심점을 100% 일치시킵니다!
-        // 그리고 bottom-48 (12rem)로 올려서 밑에 있는 모든 버튼(폴더, 추가) 위로 안전하게 띄웁니다.
-        className="fixed bottom-48 right-[2.25rem] w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(79,70,229,0.5)] active:scale-90 transition-all z-40 hover:shadow-[0_10px_35px_rgba(79,70,229,0.8)]"
+        // 🔥 [핵심 수정] 너무 높았던 bottom-48을 -> bottom-[9.5rem]으로 내립니다. (우측 중심점 right-[2.25rem]은 유지!)
+        className="fixed bottom-[9.5rem] right-[2.25rem] w-14 h-14 bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(79,70,229,0.5)] active:scale-90 transition-all z-40 hover:shadow-[0_10px_35px_rgba(79,70,229,0.8)]"
       >
         {isChatOpen ? <X size={24} /> : <Bot size={28} />}
       </button>
 
       {/* 챗봇 창 */}
       {isChatOpen && (
-        // 🔥 [핵심 수정] 토글 버튼이 올라간 만큼 챗봇 창의 시작점도 bottom-[16rem]으로 더 끌어올립니다.
-        <div className="fixed bottom-[16rem] right-4 md:right-8 w-[calc(100vw-2rem)] md:w-96 h-[30rem] bg-gray-900 border border-gray-700/50 rounded-3xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 backdrop-blur-xl">
+        // 🔥 [핵심 수정] 챗봇 창도 버튼 위치에 맞춰서 bottom-[16rem] -> bottom-[14rem]으로 자연스럽게 내립니다.
+        <div className="fixed bottom-[14rem] right-4 md:right-8 w-[calc(100vw-2rem)] md:w-96 h-[30rem] bg-gray-900 border border-gray-700/50 rounded-3xl shadow-2xl z-40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 backdrop-blur-xl">
           {/* 헤더 */}
           <div className="bg-gray-800/80 p-4 border-b border-gray-700/50 flex justify-between items-center backdrop-blur-md">
             <div className="flex items-center gap-2 font-bold text-white">
@@ -1014,6 +1013,6 @@ export default function Dashboard() {
           </form>
         </div>
       )}
-    </div> // <-- 기존 파일 맨 마지막을 장식하던 </div> 입니다.
+    </div>
   );
 }
